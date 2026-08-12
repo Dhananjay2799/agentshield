@@ -1,0 +1,43 @@
+services:
+  postgres:
+    image: postgres:17
+    container_name: agentshield-postgres
+    restart: unless-stopped
+
+    environment:
+      POSTGRES_USER: agentshield
+      POSTGRES_PASSWORD: agentshield_dev_password
+      POSTGRES_DB: agentshield
+
+    ports:
+      - "5432:5432"
+
+    volumes:
+      - agentshield_postgres_data:/var/lib/postgresql/data
+
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U agentshield -d agentshield"]
+      interval: 5s
+      timeout: 5s
+      retries: 5
+
+  opa:
+    image: openpolicyagent/opa:latest
+    container_name: agentshield-opa
+    command:
+      - "run"
+      - "--server"
+      - "--addr=0.0.0.0:8181"
+      - "--log-level=info"
+      - "/policies"
+
+    ports:
+      - "8181:8181"
+
+    volumes:
+      - ./policies:/policies:ro
+
+    restart: unless-stopped
+
+volumes:
+  agentshield_postgres_data:

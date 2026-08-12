@@ -1,0 +1,69 @@
+name: AgentShield CI
+
+on:
+  push:
+    branches:
+      - main
+      - develop
+
+  pull_request:
+    branches:
+      - main
+      - develop
+
+permissions:
+  contents: read
+
+jobs:
+  go-tests:
+    name: Go Tests
+    runs-on: ubuntu-latest
+
+    defaults:
+      run:
+        working-directory: services/gateway
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Set up Go
+        uses: actions/setup-go@v6
+        with:
+          go-version-file: services/gateway/go.mod
+          cache-dependency-path: services/gateway/go.sum
+
+      - name: Verify formatting
+        run: |
+          test -z "$(gofmt -l .)"
+
+      - name: Download dependencies
+        run: go mod download
+
+      - name: Run Go tests
+        run: go test ./...
+
+      - name: Run Go vet
+        run: go vet ./...
+
+  rego-tests:
+    name: Rego Policy Tests
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Validate Rego policies
+        run: |
+          docker run --rm \
+            -v "${{ github.workspace }}/policies:/policies:ro" \
+            openpolicyagent/opa:latest \
+            check /policies
+
+      - name: Run Rego tests
+        run: |
+          docker run --rm \
+            -v "${{ github.workspace }}/policies:/policies:ro" \
+            openpolicyagent/opa:latest \
+            test /policies -v
