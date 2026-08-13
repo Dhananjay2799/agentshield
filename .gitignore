@@ -42,3 +42,5 @@ tmp/
 
 # OneDrive / misc
 desktop.ini
+# Local backups
+docker-compose.backup.yml

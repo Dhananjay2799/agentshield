@@ -8,6 +8,7 @@ import (
 	"time"
 
 	"github.com/dhananjay2799/agentshield/services/gateway/internal/database"
+	"github.com/dhananjay2799/agentshield/services/gateway/internal/events"
 	"github.com/dhananjay2799/agentshield/services/gateway/internal/handlers"
 	"github.com/dhananjay2799/agentshield/services/gateway/internal/middleware"
 	"github.com/dhananjay2799/agentshield/services/gateway/internal/opa"
@@ -31,11 +32,23 @@ func main() {
 
 	log.Println("Connected to AgentShield PostgreSQL")
 
+	if err := database.EnsurePolicySchema(
+		ctx,
+		db,
+	); err != nil {
+		log.Fatalf(
+			"policy schema initialization failed: %v",
+			err,
+		)
+	}
+
 	agentRepository := repository.NewAgentRepository(db)
 	sessionRepository := repository.NewSessionRepository(db)
 	auditRepository := repository.NewAuditRepository(db)
 	approvalRepository := repository.NewApprovalRepository(db)
 	grantRepository := repository.NewGrantRepository(db)
+	incidentRepository := repository.NewIncidentRepository(db)
+	policyRepository := repository.NewPolicyRepository(db)
 
 	opaURL := os.Getenv("OPA_URL")
 
@@ -52,14 +65,62 @@ func main() {
 		log.Printf("expired %d old authorization grants", expiredCount)
 	}
 
+	kafkaBroker := os.Getenv("KAFKA_BROKER")
+
+	if kafkaBroker == "" {
+		kafkaBroker = "localhost:19092"
+	}
+
+	eventProducer, err := events.NewProducer(
+		[]string{kafkaBroker},
+		"agentshield.security.events",
+	)
+
+	if err != nil {
+		log.Fatalf("failed to create Kafka producer: %v", err)
+	}
+
+	defer eventProducer.Close()
+
+	log.Println("Connected to AgentShield event broker")
+
 	agentHandler := handlers.NewAgentHandler(agentRepository)
 	sessionHandler := handlers.NewSessionHandler(sessionRepository)
+	incidentHandler := handlers.NewIncidentHandler(incidentRepository)
+
+	policyHandler :=
+		handlers.NewPolicyHandler(
+			policyRepository,
+		)
+
+	eventHandler := handlers.NewEventHandler(
+		auditRepository,
+	)
+
+	eventStreamHandler :=
+		handlers.NewEventStreamHandler(
+			eventProducer.Hub,
+		)
+
+	sessionActivityHandler :=
+		handlers.NewSessionActivityHandler(
+			auditRepository,
+			approvalRepository,
+		)
+
+	agentActivityHandler := handlers.NewAgentActivityHandler(
+		sessionRepository,
+		auditRepository,
+		approvalRepository,
+	)
+
 	actionHandler := handlers.NewActionHandler(
 		agentRepository,
 		auditRepository,
 		approvalRepository,
 		grantRepository,
 		opaClient,
+		eventProducer,
 	)
 	approvalHandler := handlers.NewApprovalHandler(
 		approvalRepository,
@@ -83,6 +144,46 @@ func main() {
 	mux.HandleFunc("POST /v1/sessions/{id}/revoke", sessionHandler.Revoke)
 
 	mux.HandleFunc(
+		"GET /v1/agents/{id}/sessions",
+		agentActivityHandler.ListSessions,
+	)
+
+	mux.HandleFunc(
+		"GET /v1/agents/{id}/sessions/security",
+		agentActivityHandler.ListSessionSecurity,
+	)
+
+	mux.HandleFunc(
+		"GET /v1/agents/{id}/actions",
+		agentActivityHandler.ListActions,
+	)
+
+	mux.HandleFunc(
+		"GET /v1/agents/{id}/approvals",
+		agentActivityHandler.ListApprovals,
+	)
+
+	mux.HandleFunc(
+		"GET /v1/sessions/{id}/actions",
+		sessionActivityHandler.ListActions,
+	)
+
+	mux.HandleFunc(
+		"GET /v1/sessions/{id}/approvals",
+		sessionActivityHandler.ListApprovals,
+	)
+
+	mux.HandleFunc(
+		"GET /v1/events",
+		eventHandler.ListRecent,
+	)
+
+	mux.HandleFunc(
+		"GET /v1/events/stream",
+		eventStreamHandler.Stream,
+	)
+
+	mux.HandleFunc(
 		"GET /v1/protected/test",
 		middleware.SessionRequired(
 			sessionRepository,
@@ -102,16 +203,53 @@ func main() {
 		),
 	)
 
+	mux.HandleFunc(
+		"POST /v1/incidents/{id}/investigate",
+		incidentHandler.Investigate,
+	)
+
+	mux.HandleFunc(
+		"POST /v1/incidents/{id}/resolve",
+		incidentHandler.Resolve,
+	)
+
+	mux.HandleFunc(
+		"POST /v1/incidents/{id}/dismiss",
+		incidentHandler.Dismiss,
+	)
+
 	mux.HandleFunc("GET /v1/approvals", approvalHandler.ListPending)
 	mux.HandleFunc("GET /v1/approvals/{id}", approvalHandler.GetByID)
 	mux.HandleFunc("POST /v1/approvals/{id}/approve", approvalHandler.Approve)
 	mux.HandleFunc("POST /v1/approvals/{id}/deny", approvalHandler.Deny)
+	mux.HandleFunc("GET /v1/incidents", incidentHandler.List)
+	mux.HandleFunc("GET /v1/incidents/{id}", incidentHandler.GetByID)
+
+	mux.HandleFunc(
+		"GET /v1/policies",
+		policyHandler.List,
+	)
+
+	mux.HandleFunc(
+		"GET /v1/policies/{id}",
+		policyHandler.GetByID,
+	)
+
+	mux.HandleFunc(
+		"POST /v1/policies",
+		policyHandler.Create,
+	)
+
+	mux.HandleFunc(
+		"POST /v1/policies/{id}/validate",
+		policyHandler.Validate,
+	)
 
 	server := &http.Server{
 		Addr:         ":8080",
 		Handler:      mux,
 		ReadTimeout:  5 * time.Second,
-		WriteTimeout: 10 * time.Second,
+		WriteTimeout: 0,
 		IdleTimeout:  60 * time.Second,
 	}
 

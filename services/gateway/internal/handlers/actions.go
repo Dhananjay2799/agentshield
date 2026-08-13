@@ -7,6 +7,7 @@ import (
 	"net/http"
 	"time"
 
+	"github.com/dhananjay2799/agentshield/services/gateway/internal/events"
 	"github.com/dhananjay2799/agentshield/services/gateway/internal/middleware"
 	"github.com/dhananjay2799/agentshield/services/gateway/internal/models"
 	"github.com/dhananjay2799/agentshield/services/gateway/internal/opa"
@@ -20,6 +21,7 @@ type ActionHandler struct {
 	ApprovalRepository *repository.ApprovalRepository
 	GrantRepository    *repository.GrantRepository
 	OPAClient          *opa.Client
+	EventProducer      *events.Producer
 }
 
 func NewActionHandler(
@@ -28,6 +30,7 @@ func NewActionHandler(
 	approvalRepository *repository.ApprovalRepository,
 	grantRepository *repository.GrantRepository,
 	opaClient *opa.Client,
+	eventProducer *events.Producer,
 ) *ActionHandler {
 	return &ActionHandler{
 		AgentRepository:    agentRepository,
@@ -35,6 +38,7 @@ func NewActionHandler(
 		ApprovalRepository: approvalRepository,
 		GrantRepository:    grantRepository,
 		OPAClient:          opaClient,
+		EventProducer:      eventProducer,
 	}
 }
 
@@ -223,13 +227,36 @@ func (h *ActionHandler) Evaluate(w http.ResponseWriter, r *http.Request) {
 		},
 	)
 
-	if err != nil {
-		log.Printf("failed to write audit event: %v", err)
+	event := events.SecurityEvent{
+		EventType: "action_evaluation",
+		AgentID:   session.AgentID,
+		SessionID: session.ID,
+		Action:    req.Action,
+		Resource:  req.Resource,
+		Decision:  decision,
+		RiskScore: riskResult.Score,
+		Metadata: map[string]any{
+			"request_reason": req.Reason,
+			"policy_reason":  policyReason,
+			"approval_id":    approvalID,
+			"grant_id":       grantID,
+			"agent_type":     agent.AgentType,
+			"environment":    agent.Environment,
+		},
+		OccurredAt: time.Now().UTC(),
+	}
 
-		writeJSON(w, http.StatusInternalServerError, map[string]string{
-			"error": "failed to record security decision",
-		})
-		return
+	log.Printf(
+		"publishing security event to Kafka: action=%s decision=%s agent=%s",
+		req.Action,
+		decision,
+		session.AgentID,
+	)
+
+	if err := h.EventProducer.Publish(r.Context(), event); err != nil {
+		log.Printf("failed to publish security event: %v", err)
+	} else {
+		log.Printf("security event published successfully")
 	}
 
 	writeJSON(w, http.StatusOK, response)

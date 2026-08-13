@@ -170,3 +170,162 @@ func (r *SessionRepository) ValidateActive(
 
 	return session, nil
 }
+
+func (r *SessionRepository) ListSecurityByAgentID(
+	ctx context.Context,
+	agentID string,
+) ([]models.SessionSecuritySummary, error) {
+
+	rows, err := r.DB.Query(
+		ctx,
+		`
+		SELECT
+			s.id,
+			s.agent_id,
+			s.task_id,
+			s.status,
+			s.started_at,
+			s.ended_at,
+			s.expires_at,
+
+			COUNT(a.id)::int AS action_count,
+
+			COUNT(a.id) FILTER (
+				WHERE a.decision = 'ALLOW'
+			)::int AS allowed_count,
+
+			COUNT(a.id) FILTER (
+				WHERE a.decision = 'DENY'
+			)::int AS denied_count,
+
+			COUNT(a.id) FILTER (
+				WHERE a.decision = 'REQUIRE_APPROVAL'
+			)::int AS approval_count,
+
+			COALESCE(MAX(a.risk_score), 0)::int
+				AS highest_risk_score,
+
+			MAX(a.created_at) AS last_action_at
+
+		FROM agent_sessions s
+
+		LEFT JOIN audit_events a
+			ON a.session_id = s.id
+
+		WHERE s.agent_id = $1
+
+		GROUP BY
+			s.id,
+			s.agent_id,
+			s.task_id,
+			s.status,
+			s.started_at,
+			s.ended_at,
+			s.expires_at
+
+		ORDER BY s.started_at DESC
+
+		LIMIT 100
+		`,
+		agentID,
+	)
+
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+
+	sessions := make(
+		[]models.SessionSecuritySummary,
+		0,
+	)
+
+	for rows.Next() {
+		var session models.SessionSecuritySummary
+
+		if err := rows.Scan(
+			&session.ID,
+			&session.AgentID,
+			&session.TaskID,
+			&session.Status,
+			&session.StartedAt,
+			&session.EndedAt,
+			&session.ExpiresAt,
+			&session.ActionCount,
+			&session.AllowedCount,
+			&session.DeniedCount,
+			&session.ApprovalCount,
+			&session.HighestRiskScore,
+			&session.LastActionAt,
+		); err != nil {
+			return nil, err
+		}
+
+		sessions = append(
+			sessions,
+			session,
+		)
+	}
+
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+
+	return sessions, nil
+}
+
+func (r *SessionRepository) ListByAgentID(
+	ctx context.Context,
+	agentID string,
+) ([]models.AgentSession, error) {
+
+	rows, err := r.DB.Query(
+		ctx,
+		`
+		SELECT
+			id,
+			agent_id,
+			task_id,
+			status,
+			started_at,
+			ended_at,
+			expires_at
+		FROM agent_sessions
+		WHERE agent_id = $1
+		ORDER BY started_at DESC
+		LIMIT 100
+		`,
+		agentID,
+	)
+
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+
+	sessions := make([]models.AgentSession, 0)
+
+	for rows.Next() {
+		var session models.AgentSession
+
+		if err := rows.Scan(
+			&session.ID,
+			&session.AgentID,
+			&session.TaskID,
+			&session.Status,
+			&session.StartedAt,
+			&session.EndedAt,
+			&session.ExpiresAt,
+		); err != nil {
+			return nil, err
+		}
+
+		sessions = append(sessions, session)
+	}
+
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+
+	return sessions, nil
+}

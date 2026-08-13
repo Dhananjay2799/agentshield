@@ -168,6 +168,7 @@ func (r *ApprovalRepository) ListPending(
 			expires_at
 		FROM approval_requests
 		WHERE status = 'pending'
+  		AND expires_at > NOW()
 		ORDER BY requested_at DESC
 		`,
 	)
@@ -430,4 +431,135 @@ func (r *ApprovalRepository) ApproveAndCreateGrant(
 	}
 
 	return &approval, &grant, nil
+}
+
+func (r *ApprovalRepository) ListBySessionID(
+	ctx context.Context,
+	sessionID string,
+) ([]models.ApprovalRequest, error) {
+
+	rows, err := r.DB.Query(
+		ctx,
+		`
+		SELECT
+			id,
+			agent_id,
+			session_id,
+			action,
+			resource,
+			reason,
+			risk_score,
+			status,
+			requested_at,
+			approved_at,
+			denied_at,
+			expires_at
+		FROM approval_requests
+		WHERE session_id = $1
+		ORDER BY requested_at ASC
+		`,
+		sessionID,
+	)
+
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+
+	approvals := make([]models.ApprovalRequest, 0)
+
+	for rows.Next() {
+		var approval models.ApprovalRequest
+
+		if err := rows.Scan(
+			&approval.ID,
+			&approval.AgentID,
+			&approval.SessionID,
+			&approval.Action,
+			&approval.Resource,
+			&approval.Reason,
+			&approval.RiskScore,
+			&approval.Status,
+			&approval.RequestedAt,
+			&approval.ApprovedAt,
+			&approval.DeniedAt,
+			&approval.ExpiresAt,
+		); err != nil {
+			return nil, err
+		}
+
+		approvals = append(approvals, approval)
+	}
+
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+
+	return approvals, nil
+}
+
+func (r *ApprovalRepository) ListByAgentID(
+	ctx context.Context,
+	agentID string,
+) ([]models.ApprovalRequest, error) {
+
+	rows, err := r.DB.Query(
+		ctx,
+		`
+		SELECT
+			id,
+			agent_id,
+			session_id,
+			action,
+			resource,
+			reason,
+			risk_score,
+			status,
+			requested_at,
+			approved_at,
+			denied_at,
+			expires_at
+		FROM approval_requests
+		WHERE agent_id = $1
+		ORDER BY requested_at DESC
+		LIMIT 100
+		`,
+		agentID,
+	)
+
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+
+	approvals := make([]models.ApprovalRequest, 0)
+
+	for rows.Next() {
+		var approval models.ApprovalRequest
+
+		if err := rows.Scan(
+			&approval.ID,
+			&approval.AgentID,
+			&approval.SessionID,
+			&approval.Action,
+			&approval.Resource,
+			&approval.Reason,
+			&approval.RiskScore,
+			&approval.Status,
+			&approval.RequestedAt,
+			&approval.ApprovedAt,
+			&approval.DeniedAt,
+			&approval.ExpiresAt,
+		); err != nil {
+			return nil, err
+		}
+
+		approvals = append(approvals, approval)
+	}
+
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+
+	return approvals, nil
 }

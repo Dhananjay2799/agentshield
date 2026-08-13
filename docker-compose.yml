@@ -39,5 +39,32 @@ services:
 
     restart: unless-stopped
 
+  redpanda:
+    image: redpandadata/redpanda:latest
+    container_name: agentshield-redpanda
+    command:
+      - redpanda
+      - start
+      - --overprovisioned
+      - --smp
+      - "1"
+      - --memory
+      - 512M
+      - --reserve-memory
+      - 0M
+      - --node-id
+      - "0"
+      - --check=false
+      - --kafka-addr
+      - internal://0.0.0.0:9092,external://0.0.0.0:19092
+      - --advertise-kafka-addr
+      - internal://redpanda:9092,external://localhost:19092
+    ports:
+      - "19092:19092"
+    volumes:
+      - agentshield_redpanda_data:/var/lib/redpanda/data
+    restart: unless-stopped
+
 volumes:
   agentshield_postgres_data:
+  agentshield_redpanda_data:

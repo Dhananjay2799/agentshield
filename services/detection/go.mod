@@ -1,4 +1,4 @@
-module github.com/dhananjay2799/agentshield/services/gateway
+module github.com/dhananjay2799/agentshield/services/detection
 
 go 1.26.5
 
