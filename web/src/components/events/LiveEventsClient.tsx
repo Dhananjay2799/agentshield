@@ -1,6 +1,11 @@
 "use client"
 
-import { useEffect, useMemo, useState } from "react"
+import {
+  useEffect,
+  useMemo,
+  useState,
+} from "react"
+
 import Link from "next/link"
 
 import {
@@ -48,8 +53,8 @@ type StreamStatus =
 
 type StreamSecurityEvent = {
   event_type: string
-  agent_id: string
-  session_id: string
+  agent_id?: string | null
+  session_id?: string | null
   action: string
   resource: string
   decision: string
@@ -71,12 +76,17 @@ function decisionClasses(
     case "REQUIRE_APPROVAL":
       return "border-amber-500/30 bg-amber-500/10 text-amber-300"
 
+    case "SUCCESS":
+      return "border-sky-500/30 bg-sky-500/10 text-sky-300"
+
     default:
       return "border-zinc-700 bg-zinc-900 text-zinc-300"
   }
 }
 
-function riskClasses(score: number) {
+function riskClasses(
+  score: number
+) {
   if (score >= 80) {
     return "text-red-400"
   }
@@ -133,7 +143,7 @@ function convertStreamEvent(
   event: StreamSecurityEvent
 ): SecurityEvent {
   const syntheticID = [
-    event.session_id,
+    event.session_id ?? "control-plane",
     event.action,
     event.decision,
     event.occurred_at,
@@ -141,8 +151,9 @@ function convertStreamEvent(
 
   return {
     id: syntheticID,
-    agent_id: event.agent_id,
-    session_id: event.session_id,
+    agent_id: event.agent_id ?? null,
+    session_id:
+      event.session_id ?? null,
     event_type: event.event_type,
     action: event.action,
     resource: event.resource,
@@ -153,52 +164,90 @@ function convertStreamEvent(
   }
 }
 
+function metadataText(
+  metadata:
+    | Record<string, unknown>
+    | undefined,
+  key: string
+): string | null {
+  const value =
+    metadata?.[key]
+
+  if (
+    value === null ||
+    value === undefined ||
+    value === ""
+  ) {
+    return null
+  }
+
+  return String(value)
+}
+
 export default function LiveEventsClient({
   initialEvents,
 }: LiveEventsClientProps) {
   const [events, setEvents] =
-    useState(initialEvents)
+    useState<SecurityEvent[]>(
+      initialEvents
+    )
 
   const [filter, setFilter] =
     useState<DecisionFilter>("ALL")
 
-  const [streamStatus, setStreamStatus] =
-    useState<StreamStatus>("connecting")
+  const [
+    streamStatus,
+    setStreamStatus,
+  ] =
+    useState<StreamStatus>(
+      "connecting"
+    )
 
-  const [isRefreshing, setIsRefreshing] =
+  const [
+    isRefreshing,
+    setIsRefreshing,
+  ] =
     useState(false)
 
-  const [lastUpdated, setLastUpdated] =
+  const [
+    lastUpdated,
+    setLastUpdated,
+  ] =
     useState<Date | null>(null)
 
   async function loadEvents() {
     try {
       setIsRefreshing(true)
 
-      const response = await fetch(
-        "/api/events?limit=100",
-        {
-          cache: "no-store",
-        }
-      )
+      const response =
+        await fetch(
+          "/api/events?limit=100",
+          {
+            cache: "no-store",
+          }
+        )
 
       if (!response.ok) {
         return
       }
 
-      const payload: SecurityEvent[] =
+      const payload:
+        SecurityEvent[] =
         await response.json()
 
       setEvents(payload)
-      setLastUpdated(new Date())
+
+      setLastUpdated(
+        new Date()
+      )
     } finally {
       setIsRefreshing(false)
     }
   }
 
   useEffect(() => {
-    let eventSource: EventSource | null =
-      null
+    let eventSource:
+      EventSource | null = null
 
     let hasConnected = false
 
@@ -209,14 +258,21 @@ export default function LiveEventsClient({
           : "connecting"
       )
 
-      eventSource = new EventSource(
-        "/api/events/stream"
-      )
+      eventSource =
+        new EventSource(
+          "/api/events/stream"
+        )
 
       eventSource.onopen = () => {
         hasConnected = true
-        setStreamStatus("connected")
-	setLastUpdated(new Date())
+
+        setStreamStatus(
+          "connected"
+        )
+
+        setLastUpdated(
+          new Date()
+        )
       }
 
       eventSource.addEventListener(
@@ -229,44 +285,54 @@ export default function LiveEventsClient({
               ) as StreamSecurityEvent
 
             const event =
-              convertStreamEvent(payload)
+              convertStreamEvent(
+                payload
+              )
 
-            setEvents((current) => {
-              const withoutDuplicate =
-                current.filter(
-                  (existing) =>
-                    !(
-                      existing.session_id ===
-                        event.session_id &&
-                      existing.action ===
-                        event.action &&
-                      existing.decision ===
-                        event.decision &&
-                      existing.created_at ===
-                        event.created_at
-                    )
+            setEvents(
+              (current) => {
+                const withoutDuplicate =
+                  current.filter(
+                    (existing) =>
+                      !(
+                        existing.session_id ===
+                          event.session_id &&
+                        existing.action ===
+                          event.action &&
+                        existing.decision ===
+                          event.decision &&
+                        existing.created_at ===
+                          event.created_at
+                      )
+                  )
+
+                return [
+                  event,
+                  ...withoutDuplicate,
+                ].slice(
+                  0,
+                  100
                 )
+              }
+            )
 
-              return [
-                event,
-                ...withoutDuplicate,
-              ].slice(0, 100)
-            })
-
-            setLastUpdated(new Date())
+            setLastUpdated(
+              new Date()
+            )
           } catch {
             // Ignore malformed stream messages.
           }
         }
       )
 
-      eventSource.onerror = () => {
-        setStreamStatus(
-          hasConnected
-            ? "reconnecting"
-            : "disconnected"
-        )
-      }
+      eventSource.onerror =
+        () => {
+          setStreamStatus(
+            hasConnected
+              ? "reconnecting"
+              : "disconnected"
+          )
+        }
     }
 
     connect()
@@ -278,26 +344,34 @@ export default function LiveEventsClient({
 
   const filteredEvents =
     useMemo(() => {
-      if (filter === "ALL") {
+      if (
+        filter === "ALL"
+      ) {
         return events
       }
 
       return events.filter(
         (event) =>
-          event.decision === filter
+          event.decision ===
+          filter
       )
-    }, [events, filter])
+    }, [
+      events,
+      filter,
+    ])
 
   const allowedCount =
     events.filter(
       (event) =>
-        event.decision === "ALLOW"
+        event.decision ===
+        "ALLOW"
     ).length
 
   const deniedCount =
     events.filter(
       (event) =>
-        event.decision === "DENY"
+        event.decision ===
+        "DENY"
     ).length
 
   const approvalCount =
@@ -318,7 +392,9 @@ export default function LiveEventsClient({
       <section className="grid gap-4 md:grid-cols-2 xl:grid-cols-4">
         <MetricCard
           title="Allowed"
-          value={allowedCount}
+          value={
+            allowedCount
+          }
           description="Permitted actions"
           icon={
             <CheckCircle2 className="h-4 w-4 text-emerald-400" />
@@ -327,7 +403,9 @@ export default function LiveEventsClient({
 
         <MetricCard
           title="Denied"
-          value={deniedCount}
+          value={
+            deniedCount
+          }
           description="Blocked actions"
           icon={
             <XCircle className="h-4 w-4 text-red-400" />
@@ -336,7 +414,9 @@ export default function LiveEventsClient({
 
         <MetricCard
           title="Approval Required"
-          value={approvalCount}
+          value={
+            approvalCount
+          }
           description="Human escalation events"
           icon={
             <ShieldAlert className="h-4 w-4 text-amber-400" />
@@ -345,7 +425,9 @@ export default function LiveEventsClient({
 
         <MetricCard
           title="Critical Risk"
-          value={criticalCount}
+          value={
+            criticalCount
+          }
           description="Risk score 80 or greater"
           icon={
             <Activity className="h-4 w-4 text-red-400" />
@@ -362,8 +444,10 @@ export default function LiveEventsClient({
               </CardTitle>
 
               <p className="mt-1 text-sm text-zinc-500">
-                Server-pushed AgentShield security
-                activity over SSE.
+                Server-pushed
+                AgentShield
+                security activity
+                over SSE.
               </p>
             </div>
 
@@ -395,30 +479,39 @@ export default function LiveEventsClient({
                   "DENY",
                   "REQUIRE_APPROVAL",
                 ] as DecisionFilter[]
-              ).map((value) => (
-                <Button
-                  key={value}
-                  size="sm"
-                  variant={
-                    filter === value
-                      ? "default"
-                      : "outline"
-                  }
-                  onClick={() =>
-                    setFilter(value)
-                  }
-                >
-                  {value ===
-                  "REQUIRE_APPROVAL"
-                    ? "APPROVAL"
-                    : value}
-                </Button>
-              ))}
+              ).map(
+                (value) => (
+                  <Button
+                    key={
+                      value
+                    }
+                    size="sm"
+                    variant={
+                      filter ===
+                      value
+                        ? "default"
+                        : "outline"
+                    }
+                    onClick={() =>
+                      setFilter(
+                        value
+                      )
+                    }
+                  >
+                    {value ===
+                    "REQUIRE_APPROVAL"
+                      ? "APPROVAL"
+                      : value}
+                  </Button>
+                )
+              )}
 
               <Button
                 size="sm"
                 variant="outline"
-                disabled={isRefreshing}
+                disabled={
+                  isRefreshing
+                }
                 onClick={() =>
                   void loadEvents()
                 }
@@ -440,184 +533,257 @@ export default function LiveEventsClient({
             <Clock3 className="h-3.5 w-3.5" />
 
             Last event/update{" "}
-	    {lastUpdated
-  		? lastUpdated.toLocaleTimeString()
-  		: "waiting for stream..."}
+            {lastUpdated
+              ? lastUpdated.toLocaleTimeString()
+              : "waiting for stream..."}
           </div>
         </CardHeader>
 
         <CardContent>
-          {filteredEvents.length === 0 ? (
+          {filteredEvents.length ===
+          0 ? (
             <div className="py-16 text-center text-sm text-zinc-500">
-              No matching security events.
+              No matching
+              security events.
             </div>
           ) : (
             <div className="space-y-3">
               {filteredEvents.map(
-                (event) => (
-                  <div
-                    key={event.id}
-                    className="rounded-xl border border-zinc-800 bg-zinc-950/60 p-4"
-                  >
-                    <div className="flex flex-col justify-between gap-4 xl:flex-row xl:items-start">
-                      <div className="min-w-0">
-                        <div className="flex flex-wrap items-center gap-2">
-                          <span className="font-mono text-sm font-semibold text-zinc-200">
-                            {event.action}
-                          </span>
+                (event) => {
+                  const policyEngine =
+                    metadataText(
+                      event.metadata,
+                      "policy_engine"
+                    )
 
-                          <Badge
-                            variant="outline"
-                            className={decisionClasses(
-                              event.decision
-                            )}
-                          >
-                            {event.decision}
-                          </Badge>
+                  const environment =
+                    metadataText(
+                      event.metadata,
+                      "environment"
+                    )
 
-                          <Badge
-                            variant="outline"
-                            className="border-zinc-700 bg-zinc-900 text-zinc-300"
-                          >
-                            <span
-                              className={riskClasses(
-                                event.risk_score
-                              )}
-                            >
-                              Risk{" "}
+                  const riskReason =
+                    metadataText(
+                      event.metadata,
+                      "risk_reason"
+                    )
+
+                  const policyReason =
+                    metadataText(
+                      event.metadata,
+                      "policy_reason"
+                    )
+
+                  const requestReason =
+                    metadataText(
+                      event.metadata,
+                      "request_reason"
+                    )
+
+                  const approvalID =
+                    metadataText(
+                      event.metadata,
+                      "approval_id"
+                    )
+
+                  const grantID =
+                    metadataText(
+                      event.metadata,
+                      "grant_id"
+                    )
+
+                  const policyName =
+                    metadataText(
+                      event.metadata,
+                      "policy_name"
+                    )
+
+                  return (
+                    <div
+                      key={
+                        event.id
+                      }
+                      className="rounded-xl border border-zinc-800 bg-zinc-950/60 p-4"
+                    >
+                      <div className="flex flex-col justify-between gap-4 xl:flex-row xl:items-start">
+                        <div className="min-w-0">
+                          <div className="flex flex-wrap items-center gap-2">
+                            <span className="font-mono text-sm font-semibold text-zinc-200">
                               {
-                                event.risk_score
+                                event.action
                               }
                             </span>
-                          </Badge>
 
-                          <Badge
-                            variant="outline"
-                            className="border-zinc-700 bg-zinc-900 text-zinc-400"
-                          >
-                            {event.event_type}
-                          </Badge>
+                            <Badge
+                              variant="outline"
+                              className={decisionClasses(
+                                event.decision
+                              )}
+                            >
+                              {
+                                event.decision
+                              }
+                            </Badge>
+
+                            <Badge
+                              variant="outline"
+                              className="border-zinc-700 bg-zinc-900 text-zinc-300"
+                            >
+                              <span
+                                className={riskClasses(
+                                  event.risk_score
+                                )}
+                              >
+                                Risk{" "}
+                                {
+                                  event.risk_score
+                                }
+                              </span>
+                            </Badge>
+
+                            <Badge
+                              variant="outline"
+                              className="border-zinc-700 bg-zinc-900 text-zinc-400"
+                            >
+                              {
+                                event.event_type
+                              }
+                            </Badge>
+                          </div>
+
+                          <div className="mt-2 font-mono text-xs text-zinc-500">
+                            {
+                              event.resource
+                            }
+                          </div>
+
+                          {policyName && (
+                            <div className="mt-2 text-xs text-zinc-500">
+                              Policy:{" "}
+                              <span className="text-zinc-300">
+                                {
+                                  policyName
+                                }
+                              </span>
+                            </div>
+                          )}
                         </div>
 
-                        <div className="mt-2 font-mono text-xs text-zinc-500">
-                          {event.resource}
+                        <div className="whitespace-nowrap text-xs text-zinc-500">
+                          {new Date(
+                            event.created_at
+                          ).toLocaleString()}
                         </div>
                       </div>
 
-                      <div className="whitespace-nowrap text-xs text-zinc-500">
-                        {new Date(
-                          event.created_at
-                        ).toLocaleString()}
-                      </div>
-                    </div>
-
-                    <div className="mt-4 grid gap-4 md:grid-cols-2 xl:grid-cols-4">
-                      <EventField
-                        label="Agent"
-                        value={
-                          <Link
-                            href={`/agents/${event.agent_id}`}
-                            className="font-mono text-xs text-zinc-300 transition hover:text-white"
-                          >
-                            {event.agent_id.slice(
-                              0,
-                              12
-                            )}
-                            ...
-                          </Link>
-                        }
-                      />
-
-                      <EventField
-                        label="Session"
-                        value={
-                          <Link
-                            href={`/agents/${event.agent_id}/sessions/${event.session_id}`}
-                            className="font-mono text-xs text-zinc-300 transition hover:text-white"
-                          >
-                            {event.session_id.slice(
-                              0,
-                              12
-                            )}
-                            ...
-                          </Link>
-                        }
-                      />
-
-                      <EventField
-                        label="Policy Engine"
-                        value={
-                          event.metadata
-                            ?.policy_engine ??
-                          "—"
-                        }
-                      />
-
-                      <EventField
-                        label="Environment"
-                        value={
-                          event.metadata
-                            ?.environment ??
-                          "—"
-                        }
-                      />
-                    </div>
-
-                    <div className="mt-4 grid gap-4 border-t border-zinc-800 pt-4 md:grid-cols-2 xl:grid-cols-3">
-                      <EventField
-                        label="Risk Reason"
-                        value={
-                          event.metadata
-                            ?.risk_reason ??
-                          "—"
-                        }
-                      />
-
-                      <EventField
-                        label="Policy Reason"
-                        value={
-                          event.metadata
-                            ?.policy_reason ??
-                          "—"
-                        }
-                      />
-
-                      <EventField
-                        label="Request Reason"
-                        value={
-                          event.metadata
-                            ?.request_reason ??
-                          "—"
-                        }
-                      />
-                    </div>
-
-                    {(event.metadata
-                      ?.approval_id ||
-                      event.metadata
-                        ?.grant_id) && (
-                      <div className="mt-4 grid gap-4 border-t border-zinc-800 pt-4 md:grid-cols-2">
+                      <div className="mt-4 grid gap-4 md:grid-cols-2 xl:grid-cols-4">
                         <EventField
-                          label="Approval ID"
+                          label="Agent"
                           value={
-                            event.metadata
-                              ?.approval_id ||
+                            event.agent_id ? (
+                              <Link
+                                href={`/agents/${event.agent_id}`}
+                                className="font-mono text-xs text-zinc-300 transition hover:text-white"
+                              >
+                                {event.agent_id.slice(
+                                  0,
+                                  12
+                                )}
+                                ...
+                              </Link>
+                            ) : (
+                              "Control plane"
+                            )
+                          }
+                        />
+
+                        <EventField
+                          label="Session"
+                          value={
+                            event.agent_id &&
+                            event.session_id ? (
+                              <Link
+                                href={`/agents/${event.agent_id}/sessions/${event.session_id}`}
+                                className="font-mono text-xs text-zinc-300 transition hover:text-white"
+                              >
+                                {event.session_id.slice(
+                                  0,
+                                  12
+                                )}
+                                ...
+                              </Link>
+                            ) : (
+                              "—"
+                            )
+                          }
+                        />
+
+                        <EventField
+                          label="Policy Engine"
+                          value={
+                            policyEngine ??
                             "—"
                           }
                         />
 
                         <EventField
-                          label="Grant ID"
+                          label="Environment"
                           value={
-                            event.metadata
-                              ?.grant_id ||
+                            environment ??
                             "—"
                           }
                         />
                       </div>
-                    )}
-                  </div>
-                )
+
+                      <div className="mt-4 grid gap-4 border-t border-zinc-800 pt-4 md:grid-cols-2 xl:grid-cols-3">
+                        <EventField
+                          label="Risk Reason"
+                          value={
+                            riskReason ??
+                            "—"
+                          }
+                        />
+
+                        <EventField
+                          label="Policy Reason"
+                          value={
+                            policyReason ??
+                            "—"
+                          }
+                        />
+
+                        <EventField
+                          label="Request Reason"
+                          value={
+                            requestReason ??
+                            "—"
+                          }
+                        />
+                      </div>
+
+                      {(approvalID ||
+                        grantID) && (
+                        <div className="mt-4 grid gap-4 border-t border-zinc-800 pt-4 md:grid-cols-2">
+                          <EventField
+                            label="Approval ID"
+                            value={
+                              approvalID ??
+                              "—"
+                            }
+                          />
+
+                          <EventField
+                            label="Grant ID"
+                            value={
+                              grantID ??
+                              "—"
+                            }
+                          />
+                        </div>
+                      )}
+                    </div>
+                  )
+                }
               )}
             </div>
           )}

@@ -1,7 +1,6 @@
 package handlers
 
 import (
-	"encoding/json"
 	"errors"
 	"net/http"
 
@@ -22,10 +21,11 @@ func NewAgentHandler(repo *repository.AgentRepository) *AgentHandler {
 func (h *AgentHandler) Create(w http.ResponseWriter, r *http.Request) {
 	var req models.CreateAgentRequest
 
-	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
-		writeJSON(w, http.StatusBadRequest, map[string]string{
-			"error": "invalid JSON body",
-		})
+	if !decodeJSONBody(
+		w,
+		r,
+		&req,
+	) {
 		return
 	}
 

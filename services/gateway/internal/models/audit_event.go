@@ -7,8 +7,8 @@ import (
 
 type AuditEvent struct {
 	ID        string          `json:"id"`
-	AgentID   string          `json:"agent_id"`
-	SessionID string          `json:"session_id"`
+	AgentID   *string         `json:"agent_id,omitempty"`
+	SessionID *string         `json:"session_id,omitempty"`
 	EventType string          `json:"event_type"`
 	Action    string          `json:"action"`
 	Resource  string          `json:"resource"`

@@ -1,4 +1,7 @@
-import type { ApprovalRequest } from "@/types/agentshield"
+import type {
+  ApprovalLineage,
+  ApprovalRequest,
+} from "@/types/agentshield"
 
 const API_URL =
   process.env.AGENTSHIELD_API_URL ??
@@ -22,5 +25,26 @@ export async function getPendingApprovals(): Promise<
     return response.json()
   } catch {
     return []
+  }
+}
+
+export async function getApprovalLineage(
+  approvalId: string
+): Promise<ApprovalLineage | null> {
+  try {
+    const response = await fetch(
+      `${API_URL}/v1/approvals/${approvalId}/lineage`,
+      {
+        cache: "no-store",
+      }
+    )
+
+    if (!response.ok) {
+      return null
+    }
+
+    return response.json()
+  } catch {
+    return null
   }
 }

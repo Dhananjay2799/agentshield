@@ -1,0 +1,52 @@
+name: Gateway Security CI
+
+on:
+  push:
+    branches:
+      - main
+      - develop
+
+  pull_request:
+    branches:
+      - main
+      - develop
+
+jobs:
+  gateway-security-tests:
+    name: Gateway Security Tests
+    runs-on: ubuntu-latest
+
+    defaults:
+      run:
+        working-directory: services/gateway
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Set up Go
+        uses: actions/setup-go@v5
+        with:
+          go-version: "1.26.5"
+          cache-dependency-path: services/gateway/go.sum
+
+      - name: Download dependencies
+        run: go mod download
+
+      - name: Verify formatting
+        run: |
+          test -z "$(gofmt -l .)"
+
+      - name: Run middleware security tests
+        run: go test ./internal/middleware -v
+
+      - name: Run complete Gateway test suite
+        run: go test ./...
+
+      - name: Run race detector
+        env:
+          CGO_ENABLED: "1"
+        run: go test -race ./...
+
+      - name: Run Go vet
+        run: go vet ./...

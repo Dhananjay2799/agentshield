@@ -201,3 +201,186 @@ func (r *GrantRepository) ExpireOldGrants(
 
 	return tag.RowsAffected(), nil
 }
+
+// GetByApprovalID returns the authorization grant created from
+// a specific human approval request.
+//
+// This provides durable lineage:
+//
+// approval request -> authorization grant -> action retry.
+func (r *GrantRepository) GetByApprovalID(
+	ctx context.Context,
+	approvalID string,
+) (*models.AuthorizationGrant, error) {
+
+	var grant models.AuthorizationGrant
+
+	err := r.DB.QueryRow(
+		ctx,
+		`
+		SELECT
+			id,
+			approval_id,
+			agent_id,
+			session_id,
+			action,
+			resource,
+			status,
+			issued_at,
+			expires_at,
+			used_at
+		FROM authorization_grants
+		WHERE approval_id = $1
+		ORDER BY issued_at DESC
+		LIMIT 1
+		`,
+		approvalID,
+	).Scan(
+		&grant.ID,
+		&grant.ApprovalID,
+		&grant.AgentID,
+		&grant.SessionID,
+		&grant.Action,
+		&grant.Resource,
+		&grant.Status,
+		&grant.IssuedAt,
+		&grant.ExpiresAt,
+		&grant.UsedAt,
+	)
+
+	if err != nil {
+		if errors.Is(err, pgx.ErrNoRows) {
+			return nil, ErrGrantNotFound
+		}
+
+		return nil, err
+	}
+
+	return &grant, nil
+}
+
+// GetByID retrieves an authorization grant by its unique ID.
+//
+// This method intentionally returns grants in any lifecycle state.
+// Callers must explicitly verify status and expiration before
+// treating the grant as valid authorization.
+func (r *GrantRepository) GetByID(
+	ctx context.Context,
+	id string,
+) (*models.AuthorizationGrant, error) {
+
+	var grant models.AuthorizationGrant
+
+	err := r.DB.QueryRow(
+		ctx,
+		`
+		SELECT
+			id,
+			approval_id,
+			agent_id,
+			session_id,
+			action,
+			resource,
+			status,
+			issued_at,
+			expires_at,
+			used_at
+		FROM authorization_grants
+		WHERE id = $1
+		LIMIT 1
+		`,
+		id,
+	).Scan(
+		&grant.ID,
+		&grant.ApprovalID,
+		&grant.AgentID,
+		&grant.SessionID,
+		&grant.Action,
+		&grant.Resource,
+		&grant.Status,
+		&grant.IssuedAt,
+		&grant.ExpiresAt,
+		&grant.UsedAt,
+	)
+
+	if err != nil {
+		if errors.Is(err, pgx.ErrNoRows) {
+			return nil, ErrGrantNotFound
+		}
+
+		return nil, err
+	}
+
+	return &grant, nil
+}
+
+// ConsumeForCredential atomically consumes an active, unexpired grant
+// and returns the consumed grant.
+//
+// This prevents the same authorization grant from minting multiple
+// short-lived credentials.
+func (r *GrantRepository) ConsumeForCredential(
+	ctx context.Context,
+	id string,
+	agentID string,
+	sessionID string,
+	action string,
+	resource string,
+) (*models.AuthorizationGrant, error) {
+
+	var grant models.AuthorizationGrant
+
+	err := r.DB.QueryRow(
+		ctx,
+		`
+		UPDATE authorization_grants
+		SET
+			status = 'used',
+			used_at = NOW()
+		WHERE id = $1
+		  AND agent_id = $2
+		  AND session_id = $3
+		  AND action = $4
+		  AND resource = $5
+		  AND status = 'active'
+		  AND expires_at > NOW()
+		RETURNING
+			id,
+			approval_id,
+			agent_id,
+			session_id,
+			action,
+			resource,
+			status,
+			issued_at,
+			expires_at,
+			used_at
+		`,
+		id,
+		agentID,
+		sessionID,
+		action,
+		resource,
+	).Scan(
+		&grant.ID,
+		&grant.ApprovalID,
+		&grant.AgentID,
+		&grant.SessionID,
+		&grant.Action,
+		&grant.Resource,
+		&grant.Status,
+		&grant.IssuedAt,
+		&grant.ExpiresAt,
+		&grant.UsedAt,
+	)
+
+	if err != nil {
+		if errors.Is(err, pgx.ErrNoRows) {
+			return nil, ErrGrantNotFound
+		}
+
+		return nil, err
+	}
+
+	return &grant, nil
+}

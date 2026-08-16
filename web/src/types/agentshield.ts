@@ -79,6 +79,30 @@ export type ApprovalRequest = {
   expires_at?: string
 }
 
+export type AuthorizationGrant = {
+  id: string
+  approval_id: string
+  agent_id: string
+  session_id: string
+  action: string
+  resource: string
+  status: string
+  issued_at: string
+  expires_at: string
+  used_at?: string | null
+}
+
+export type ApprovalLineage = {
+  approval: ApprovalRequest
+
+  grant?: AuthorizationGrant | null
+
+  lineage: {
+    state: string
+    final_decision?: string
+  }
+}
+
 export type IncidentMetadata = {
   action?: string
   resource?: string
@@ -118,13 +142,13 @@ export type SecurityEventMetadata = {
 
 export type SecurityEvent = {
   id: string
-  agent_id: string
-  session_id: string
+  agent_id?: string | null
+  session_id?: string | null
   event_type: string
   action: string
   resource: string
   decision: string
   risk_score: number
-  metadata: SecurityEventMetadata
+  metadata: Record<string, unknown>
   created_at: string
 }

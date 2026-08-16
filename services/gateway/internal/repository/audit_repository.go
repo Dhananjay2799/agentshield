@@ -30,6 +30,14 @@ type CreateAuditEventParams struct {
 	Metadata  map[string]any
 }
 
+func nullableString(value string) any {
+	if value == "" {
+		return nil
+	}
+
+	return value
+}
+
 func (r *AuditRepository) Create(
 	ctx context.Context,
 	params CreateAuditEventParams,
@@ -60,8 +68,8 @@ func (r *AuditRepository) Create(
 		)
 		VALUES ($1, $2, $3, $4, $5, $6, $7, $8)
 		`,
-		params.AgentID,
-		params.SessionID,
+		nullableString(params.AgentID),
+		nullableString(params.SessionID),
 		params.EventType,
 		params.Action,
 		params.Resource,

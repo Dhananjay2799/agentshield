@@ -1,7 +1,6 @@
 package handlers
 
 import (
-	"encoding/json"
 	"errors"
 	"net/http"
 
@@ -31,10 +30,11 @@ func (h *SessionHandler) Create(w http.ResponseWriter, r *http.Request) {
 
 	var req models.CreateSessionRequest
 
-	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
-		writeJSON(w, http.StatusBadRequest, map[string]string{
-			"error": "invalid JSON body",
-		})
+	if !decodeJSONBody(
+		w,
+		r,
+		&req,
+	) {
 		return
 	}
 

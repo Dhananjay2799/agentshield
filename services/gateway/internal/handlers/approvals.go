@@ -55,6 +55,91 @@ func (h *ApprovalHandler) GetByID(w http.ResponseWriter, r *http.Request) {
 	writeJSON(w, http.StatusOK, approval)
 }
 
+func (h *ApprovalHandler) GetLineage(w http.ResponseWriter, r *http.Request) {
+	id := r.PathValue("id")
+
+	approval, err := h.Repository.GetByID(r.Context(), id)
+	if err != nil {
+		if errors.Is(err, repository.ErrApprovalNotFound) {
+			writeJSON(w, http.StatusNotFound, map[string]string{
+				"error": "approval request not found",
+			})
+			return
+		}
+
+		writeJSON(w, http.StatusInternalServerError, map[string]string{
+			"error": "failed to retrieve approval lineage",
+		})
+		return
+	}
+
+	grant, err := h.GrantRepository.GetByApprovalID(
+		r.Context(),
+		approval.ID,
+	)
+
+	if err != nil && !errors.Is(err, repository.ErrGrantNotFound) {
+		writeJSON(w, http.StatusInternalServerError, map[string]string{
+			"error": "failed to retrieve authorization grant lineage",
+		})
+		return
+	}
+
+	state := "unknown"
+	finalDecision := ""
+
+	switch approval.Status {
+	case "pending":
+		state = "awaiting_human_approval"
+
+	case "denied":
+		state = "denied"
+		finalDecision = "DENY"
+
+	case "expired":
+		state = "approval_expired"
+
+	case "cancelled":
+		state = "cancelled"
+
+	case "approved":
+		if grant == nil {
+			state = "approved_without_grant"
+		}
+	}
+
+	if grant != nil {
+		switch grant.Status {
+		case "active":
+			state = "grant_active"
+
+		case "used":
+			state = "consumed"
+			finalDecision = "ALLOW"
+
+		case "expired":
+			state = "grant_expired"
+
+		case "revoked":
+			state = "grant_revoked"
+		}
+	}
+
+	lineage := map[string]any{
+		"state": state,
+	}
+
+	if finalDecision != "" {
+		lineage["final_decision"] = finalDecision
+	}
+
+	writeJSON(w, http.StatusOK, map[string]any{
+		"approval": approval,
+		"grant":    grant,
+		"lineage":  lineage,
+	})
+}
+
 func (h *ApprovalHandler) Approve(w http.ResponseWriter, r *http.Request) {
 	id := r.PathValue("id")
 

@@ -1,7 +1,6 @@
 package handlers
 
 import (
-	"encoding/json"
 	"errors"
 	"log"
 	"net/http"
@@ -45,10 +44,11 @@ func NewActionHandler(
 func (h *ActionHandler) Evaluate(w http.ResponseWriter, r *http.Request) {
 	var req models.ActionEvaluationRequest
 
-	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
-		writeJSON(w, http.StatusBadRequest, map[string]string{
-			"error": "invalid JSON body",
-		})
+	if !decodeJSONBody(
+		w,
+		r,
+		&req,
+	) {
 		return
 	}
 
@@ -190,6 +190,53 @@ func (h *ActionHandler) Evaluate(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
+	policyTrace := models.PolicyTrace{
+		Engine:   "opa",
+		Matched:  false,
+		Decision: opaDecision.Decision,
+		Reason:   opaDecision.Reason,
+	}
+
+	if opaDecision.MatchedPolicy != nil {
+		policyTrace.Matched = true
+		policyTrace.ID = opaDecision.MatchedPolicy.ID
+		policyTrace.Name = opaDecision.MatchedPolicy.Name
+		policyTrace.Priority = opaDecision.MatchedPolicy.Priority
+		policyTrace.Effect = opaDecision.MatchedPolicy.Effect
+		policyTrace.Version = opaDecision.MatchedPolicy.Version
+		policyTrace.Source = opaDecision.MatchedPolicy.Source
+	}
+
+	trace := models.DecisionTrace{
+		Request: models.RequestTrace{
+			AgentID:     session.AgentID,
+			AgentType:   agent.AgentType,
+			SessionID:   session.ID,
+			Action:      req.Action,
+			Resource:    req.Resource,
+			Environment: agent.Environment,
+		},
+
+		Risk: models.RiskTrace{
+			Score:  riskResult.Score,
+			Reason: riskResult.Reason,
+		},
+
+		Policy: policyTrace,
+
+		Authorization: models.AuthorizationTrace{
+			Required:   opaDecision.Decision == "REQUIRE_APPROVAL",
+			ApprovalID: approvalID,
+			GrantUsed:  grantID != "",
+			GrantID:    grantID,
+		},
+
+		Final: models.FinalTrace{
+			Decision: decision,
+			Reason:   policyReason,
+		},
+	}
+
 	response := models.ActionEvaluationResponse{
 		Decision:   decision,
 		RiskScore:  riskResult.Score,
@@ -198,9 +245,10 @@ func (h *ActionHandler) Evaluate(w http.ResponseWriter, r *http.Request) {
 		Resource:   req.Resource,
 		AgentID:    session.AgentID,
 		SessionID:  session.ID,
-		ApprovalID: approvalID,
 		GrantID:    grantID,
 		Timestamp:  time.Now().UTC(),
+		ApprovalID: approvalID,
+		Trace:      trace,
 	}
 
 	// Every final decision becomes a permanent security audit event.
@@ -223,6 +271,15 @@ func (h *ActionHandler) Evaluate(w http.ResponseWriter, r *http.Request) {
 				"environment":    agent.Environment,
 				"approval_id":    approvalID,
 				"grant_id":       grantID,
+
+				// Explainable managed-policy evidence.
+				"policy_matched":  policyTrace.Matched,
+				"policy_id":       policyTrace.ID,
+				"policy_name":     policyTrace.Name,
+				"policy_priority": policyTrace.Priority,
+				"policy_effect":   policyTrace.Effect,
+				"policy_version":  policyTrace.Version,
+				"policy_source":   policyTrace.Source,
 			},
 		},
 	)
@@ -237,11 +294,22 @@ func (h *ActionHandler) Evaluate(w http.ResponseWriter, r *http.Request) {
 		RiskScore: riskResult.Score,
 		Metadata: map[string]any{
 			"request_reason": req.Reason,
+			"risk_reason":    riskResult.Reason,
 			"policy_reason":  policyReason,
+			"policy_engine":  "opa",
 			"approval_id":    approvalID,
 			"grant_id":       grantID,
 			"agent_type":     agent.AgentType,
 			"environment":    agent.Environment,
+
+			// Explainable managed-policy evidence.
+			"policy_matched":  policyTrace.Matched,
+			"policy_id":       policyTrace.ID,
+			"policy_name":     policyTrace.Name,
+			"policy_priority": policyTrace.Priority,
+			"policy_effect":   policyTrace.Effect,
+			"policy_version":  policyTrace.Version,
+			"policy_source":   policyTrace.Source,
 		},
 		OccurredAt: time.Now().UTC(),
 	}

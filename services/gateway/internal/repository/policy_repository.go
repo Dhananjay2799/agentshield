@@ -284,3 +284,148 @@ func (r *PolicyRepository) GetByID(
 
 	return &policy, nil
 }
+
+func (r *PolicyRepository) Activate(
+	ctx context.Context,
+	id string,
+) (*models.Policy, error) {
+
+	commandTag, err :=
+		r.DB.Exec(
+			ctx,
+			`
+			UPDATE policies
+			SET
+				status = 'active',
+				updated_at = NOW()
+			WHERE id = $1
+			  AND status IN ('draft', 'disabled')
+			`,
+			id,
+		)
+
+	if err != nil {
+		return nil, err
+	}
+
+	if commandTag.RowsAffected() == 0 {
+		return nil, ErrPolicyNotFound
+	}
+
+	return r.GetByID(
+		ctx,
+		id,
+	)
+}
+
+func (r *PolicyRepository) Deactivate(
+	ctx context.Context,
+	id string,
+) (*models.Policy, error) {
+
+	commandTag, err :=
+		r.DB.Exec(
+			ctx,
+			`
+			UPDATE policies
+			SET
+				status = 'disabled',
+				updated_at = NOW()
+			WHERE id = $1
+			  AND status = 'active'
+			`,
+			id,
+		)
+
+	if err != nil {
+		return nil, err
+	}
+
+	if commandTag.RowsAffected() == 0 {
+		return nil, ErrPolicyNotFound
+	}
+
+	return r.GetByID(
+		ctx,
+		id,
+	)
+}
+
+func (r *PolicyRepository) ListActive(
+	ctx context.Context,
+) ([]models.Policy, error) {
+
+	rows, err := r.DB.Query(
+		ctx,
+		`
+		SELECT
+			id,
+			name,
+			description,
+			effect,
+			status,
+			priority,
+			agent_type,
+			action,
+			action_match,
+			resource,
+			resource_match,
+			environment,
+			version,
+			source,
+			created_by,
+			created_at,
+			updated_at
+		FROM policies
+		WHERE status = 'active'
+		ORDER BY
+			priority ASC,
+			created_at ASC
+		`,
+	)
+
+	if err != nil {
+		return nil, err
+	}
+
+	defer rows.Close()
+
+	policies := make([]models.Policy, 0)
+
+	for rows.Next() {
+		var policy models.Policy
+
+		if err := rows.Scan(
+			&policy.ID,
+			&policy.Name,
+			&policy.Description,
+			&policy.Effect,
+			&policy.Status,
+			&policy.Priority,
+			&policy.AgentType,
+			&policy.Action,
+			&policy.ActionMatch,
+			&policy.Resource,
+			&policy.ResourceMatch,
+			&policy.Environment,
+			&policy.Version,
+			&policy.Source,
+			&policy.CreatedBy,
+			&policy.CreatedAt,
+			&policy.UpdatedAt,
+		); err != nil {
+			return nil, err
+		}
+
+		policies = append(
+			policies,
+			policy,
+		)
+	}
+
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+
+	return policies, nil
+}
