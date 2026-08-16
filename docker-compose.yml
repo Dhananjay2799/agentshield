@@ -15,6 +15,9 @@ services:
     volumes:
       - agentshield_postgres_data:/var/lib/postgresql/data
 
+    networks:
+      - backend
+
     healthcheck:
       test: ["CMD-SHELL", "pg_isready -U agentshield -d agentshield"]
       interval: 5s
@@ -36,6 +39,9 @@ services:
 
     volumes:
       - ./policies:/policies:ro
+
+    networks:
+      - backend
 
     restart: unless-stopped
 
@@ -59,12 +65,222 @@ services:
       - internal://0.0.0.0:9092,external://0.0.0.0:19092
       - --advertise-kafka-addr
       - internal://redpanda:9092,external://localhost:19092
+
     ports:
       - "19092:19092"
+
     volumes:
       - agentshield_redpanda_data:/var/lib/redpanda/data
+
+    networks:
+      - backend
+
     restart: unless-stopped
+
+  gateway:
+    build:
+      context: ./services/gateway
+      dockerfile: Dockerfile
+    image: agentshield-gateway:local
+    container_name: agentshield-gateway
+    restart: unless-stopped
+
+    read_only: true
+    security_opt:
+      - no-new-privileges:true
+    tmpfs:
+      - /tmp:size=64m,mode=1777
+    pids_limit: 200
+    cpus: "1.0"
+    mem_limit: 512m
+    mem_reservation: 128m
+
+    environment:
+      DATABASE_URL: postgres://agentshield:agentshield_dev_password@postgres:5432/agentshield
+      OPA_URL: http://opa:8181
+      KAFKA_BROKER: redpanda:9092
+      AGENTSHIELD_ADMIN_API_KEY: ${AGENTSHIELD_ADMIN_API_KEY}
+      AGENTSHIELD_ANALYST_API_KEY: ${AGENTSHIELD_ANALYST_API_KEY}
+      AGENTSHIELD_CREDENTIAL_BROKER_API_KEY: ${AGENTSHIELD_CREDENTIAL_BROKER_API_KEY}
+
+    ports:
+      - "8080:8080"
+
+    networks:
+      - frontend
+      - backend
+
+    healthcheck:
+      test:
+        [
+          "CMD",
+          "curl",
+          "-fsS",
+          "http://localhost:8080/health"
+        ]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+      start_period: 10s
+
+    depends_on:
+      postgres:
+        condition: service_healthy
+      opa:
+        condition: service_started
+      redpanda:
+        condition: service_started
+
+  credential-broker:
+    build:
+      context: ./services/credential-broker
+      dockerfile: Dockerfile
+    image: agentshield-credential-broker:local
+    container_name: agentshield-credential-broker
+    restart: unless-stopped
+
+    read_only: true
+    security_opt:
+      - no-new-privileges:true
+    tmpfs:
+      - /tmp:size=64m,mode=1777
+    pids_limit: 200
+    cpus: "1.0"
+    mem_limit: 512m
+    mem_reservation: 128m
+
+    environment:
+      AGENTSHIELD_GATEWAY_URL: http://gateway:8080
+      AGENTSHIELD_CREDENTIAL_BROKER_API_KEY: ${AGENTSHIELD_CREDENTIAL_BROKER_API_KEY}
+      AGENTSHIELD_CREDENTIAL_SIGNING_SECRET: ${AGENTSHIELD_CREDENTIAL_SIGNING_SECRET}
+
+    ports:
+      - "8081:8081"
+
+    networks:
+      - backend
+
+    healthcheck:
+      test:
+        [
+          "CMD",
+          "curl",
+          "-fsS",
+          "http://localhost:8081/health"
+        ]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+      start_period: 10s
+
+    depends_on:
+      gateway:
+        condition: service_healthy
+
+  audit:
+    build:
+      context: ./services/audit
+      dockerfile: Dockerfile
+    image: agentshield-audit:local
+    container_name: agentshield-audit
+    restart: unless-stopped
+
+    read_only: true
+    security_opt:
+      - no-new-privileges:true
+    tmpfs:
+      - /tmp:size=64m,mode=1777
+    pids_limit: 200
+    cpus: "1.0"
+    mem_limit: 512m
+    mem_reservation: 128m
+
+    environment:
+      KAFKA_BROKER: redpanda:9092
+      KAFKA_SECURITY_TOPIC: agentshield.security.events
+      KAFKA_CONSUMER_GROUP: agentshield-audit-service
+
+    ports:
+      - "8082:8082"
+
+    networks:
+      - backend
+
+    healthcheck:
+      test:
+        [
+          "CMD",
+          "curl",
+          "-fsS",
+          "http://localhost:8082/ready"
+        ]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+      start_period: 10s
+
+    depends_on:
+      redpanda:
+        condition: service_started
+
+  detection:
+    build:
+      context: ./services/detection
+      dockerfile: Dockerfile
+    image: agentshield-detection:local
+    container_name: agentshield-detection
+    restart: unless-stopped
+
+    read_only: true
+    security_opt:
+      - no-new-privileges:true
+    tmpfs:
+      - /tmp:size=64m,mode=1777
+    pids_limit: 200
+    cpus: "1.0"
+    mem_limit: 512m
+    mem_reservation: 128m
+
+    environment:
+      DATABASE_URL: postgres://agentshield:agentshield_dev_password@postgres:5432/agentshield
+      KAFKA_BROKER: redpanda:9092
+      KAFKA_SECURITY_TOPIC: agentshield.security.events
+      KAFKA_DLQ_TOPIC: agentshield.security.dlq
+      KAFKA_CONSUMER_GROUP: agentshield-detection
+
+    ports:
+      - "8083:8083"
+
+    networks:
+      - backend
+
+    healthcheck:
+      test:
+        [
+          "CMD",
+          "curl",
+          "-fsS",
+          "http://localhost:8083/ready"
+        ]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+      start_period: 10s
+
+    depends_on:
+      postgres:
+        condition: service_healthy
+      redpanda:
+        condition: service_started
 
 volumes:
   agentshield_postgres_data:
   agentshield_redpanda_data:
+
+networks:
+  frontend:
+    driver: bridge
+
+  backend:
+    driver: bridge
+    internal: true

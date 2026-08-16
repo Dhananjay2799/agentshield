@@ -1,0 +1,11 @@
+.git
+.gitignore
+Dockerfile*
+README*
+*.log
+*.tmp
+coverage.out
+bin/
+dist/
+.vscode/
+.idea/
