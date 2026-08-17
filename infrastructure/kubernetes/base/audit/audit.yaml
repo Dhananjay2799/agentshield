@@ -1,0 +1,117 @@
+apiVersion: v1
+kind: Service
+metadata:
+  name: audit
+  namespace: agentshield
+  labels:
+    app.kubernetes.io/name: audit
+    app.kubernetes.io/part-of: agentshield
+
+spec:
+  type: ClusterIP
+
+  selector:
+    app: audit
+
+  ports:
+    - name: http
+      port: 8082
+      targetPort: 8082
+
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: audit
+  namespace: agentshield
+  labels:
+    app.kubernetes.io/name: audit
+    app.kubernetes.io/part-of: agentshield
+
+spec:
+  replicas: 1
+
+  selector:
+    matchLabels:
+      app: audit
+
+  template:
+    metadata:
+      labels:
+        app: audit
+        app.kubernetes.io/name: audit
+        app.kubernetes.io/part-of: agentshield
+
+    spec:
+      securityContext:
+        seccompProfile:
+          type: RuntimeDefault
+
+      containers:
+        - name: audit
+          image: agentshield-audit:local
+          imagePullPolicy: IfNotPresent
+
+          ports:
+            - name: http
+              containerPort: 8082
+
+          env:
+            - name: KAFKA_BROKER
+              valueFrom:
+                configMapKeyRef:
+                  name: agentshield-config
+                  key: KAFKA_BROKER
+
+            - name: KAFKA_SECURITY_TOPIC
+              valueFrom:
+                configMapKeyRef:
+                  name: agentshield-config
+                  key: KAFKA_SECURITY_TOPIC
+
+            - name: KAFKA_CONSUMER_GROUP
+              value: "agentshield-audit-service"
+
+          startupProbe:
+            httpGet:
+              path: /ready
+              port: 8082
+            periodSeconds: 5
+            timeoutSeconds: 3
+            failureThreshold: 30
+
+          readinessProbe:
+            httpGet:
+              path: /ready
+              port: 8082
+            periodSeconds: 5
+            timeoutSeconds: 3
+            failureThreshold: 3
+
+          livenessProbe:
+            httpGet:
+              path: /health
+              port: 8082
+            periodSeconds: 10
+            timeoutSeconds: 3
+            failureThreshold: 5
+
+          resources:
+            requests:
+              cpu: 50m
+              memory: 64Mi
+
+            limits:
+              cpu: 500m
+              memory: 256Mi
+
+          securityContext:
+            allowPrivilegeEscalation: false
+            runAsNonRoot: true
+            runAsUser: 999
+            runAsGroup: 999
+            readOnlyRootFilesystem: true
+
+            capabilities:
+              drop:
+                - ALL

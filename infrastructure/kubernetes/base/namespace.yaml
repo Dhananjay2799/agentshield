@@ -1,0 +1,7 @@
+apiVersion: v1
+kind: Namespace
+metadata:
+  name: agentshield
+  labels:
+    app.kubernetes.io/name: agentshield
+    app.kubernetes.io/part-of: agentshield

@@ -44,3 +44,7 @@ tmp/
 desktop.ini
 # Local backups
 docker-compose.backup.yml
+
+# Kubernetes local secrets
+infrastructure/kubernetes/**/secret.yaml
+infrastructure/kubernetes/**/secrets.yaml

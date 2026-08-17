@@ -1,0 +1,341 @@
+apiVersion: networking.k8s.io/v1
+kind: NetworkPolicy
+metadata:
+  name: default-deny
+  namespace: agentshield
+spec:
+  podSelector: {}
+  policyTypes:
+    - Ingress
+    - Egress
+
+---
+apiVersion: networking.k8s.io/v1
+kind: NetworkPolicy
+metadata:
+  name: allow-dns
+  namespace: agentshield
+spec:
+  podSelector: {}
+  policyTypes:
+    - Egress
+
+  egress:
+    - to:
+        - namespaceSelector:
+            matchLabels:
+              kubernetes.io/metadata.name: kube-system
+      ports:
+        - protocol: UDP
+          port: 53
+        - protocol: TCP
+          port: 53
+
+---
+apiVersion: networking.k8s.io/v1
+kind: NetworkPolicy
+metadata:
+  name: gateway-access
+  namespace: agentshield
+spec:
+  podSelector:
+    matchLabels:
+      app: gateway
+
+  policyTypes:
+    - Ingress
+    - Egress
+
+  ingress:
+    - {}
+
+  egress:
+    - to:
+        - podSelector:
+            matchLabels:
+              app: postgres
+      ports:
+        - protocol: TCP
+          port: 5432
+
+    - to:
+        - podSelector:
+            matchLabels:
+              app: opa
+      ports:
+        - protocol: TCP
+          port: 8181
+
+    - to:
+        - podSelector:
+            matchLabels:
+              app: redpanda
+      ports:
+        - protocol: TCP
+          port: 9092
+
+---
+apiVersion: networking.k8s.io/v1
+kind: NetworkPolicy
+metadata:
+  name: credential-broker-access
+  namespace: agentshield
+spec:
+  podSelector:
+    matchLabels:
+      app: credential-broker
+
+  policyTypes:
+    - Ingress
+    - Egress
+
+  ingress:
+    - {}
+
+  egress:
+    - to:
+        - podSelector:
+            matchLabels:
+              app: gateway
+      ports:
+        - protocol: TCP
+          port: 8080
+
+---
+apiVersion: networking.k8s.io/v1
+kind: NetworkPolicy
+metadata:
+  name: audit-access
+  namespace: agentshield
+spec:
+  podSelector:
+    matchLabels:
+      app: audit
+
+  policyTypes:
+    - Ingress
+    - Egress
+
+  ingress:
+    - {}
+
+  egress:
+    - to:
+        - podSelector:
+            matchLabels:
+              app: redpanda
+      ports:
+        - protocol: TCP
+          port: 9092
+
+---
+apiVersion: networking.k8s.io/v1
+kind: NetworkPolicy
+metadata:
+  name: detection-access
+  namespace: agentshield
+spec:
+  podSelector:
+    matchLabels:
+      app: detection
+
+  policyTypes:
+    - Ingress
+    - Egress
+
+  ingress:
+    - {}
+
+  egress:
+    - to:
+        - podSelector:
+            matchLabels:
+              app: postgres
+      ports:
+        - protocol: TCP
+          port: 5432
+
+    - to:
+        - podSelector:
+            matchLabels:
+              app: redpanda
+      ports:
+        - protocol: TCP
+          port: 9092
+
+---
+apiVersion: networking.k8s.io/v1
+kind: NetworkPolicy
+metadata:
+  name: postgres-ingress
+  namespace: agentshield
+spec:
+  podSelector:
+    matchLabels:
+      app: postgres
+
+  policyTypes:
+    - Ingress
+
+  ingress:
+    - from:
+        - podSelector:
+            matchLabels:
+              app: gateway
+      ports:
+        - protocol: TCP
+          port: 5432
+
+    - from:
+        - podSelector:
+            matchLabels:
+              app: detection
+      ports:
+        - protocol: TCP
+          port: 5432
+
+    - from:
+        - podSelector:
+            matchLabels:
+              app.kubernetes.io/name: database-migration
+      ports:
+        - protocol: TCP
+          port: 5432
+
+---
+apiVersion: networking.k8s.io/v1
+kind: NetworkPolicy
+metadata:
+  name: opa-ingress
+  namespace: agentshield
+spec:
+  podSelector:
+    matchLabels:
+      app: opa
+
+  policyTypes:
+    - Ingress
+
+  ingress:
+    - from:
+        - podSelector:
+            matchLabels:
+              app: gateway
+      ports:
+        - protocol: TCP
+          port: 8181
+
+---
+apiVersion: networking.k8s.io/v1
+kind: NetworkPolicy
+metadata:
+  name: redpanda-ingress
+  namespace: agentshield
+spec:
+  podSelector:
+    matchLabels:
+      app: redpanda
+
+  policyTypes:
+    - Ingress
+
+  ingress:
+    - from:
+        - podSelector:
+            matchLabels:
+              app: gateway
+
+        - podSelector:
+            matchLabels:
+              app: audit
+
+        - podSelector:
+            matchLabels:
+              app: detection
+
+        - podSelector:
+            matchLabels:
+              app.kubernetes.io/name: redpanda-topics
+
+      ports:
+        - protocol: TCP
+          port: 9092
+
+---
+apiVersion: networking.k8s.io/v1
+kind: NetworkPolicy
+metadata:
+  name: redpanda-self-access
+  namespace: agentshield
+spec:
+  podSelector:
+    matchLabels:
+      app: redpanda
+
+  policyTypes:
+    - Ingress
+    - Egress
+
+  ingress:
+    - from:
+        - podSelector:
+            matchLabels:
+              app: redpanda
+      ports:
+        - protocol: TCP
+          port: 9092
+
+  egress:
+    - to:
+        - podSelector:
+            matchLabels:
+              app: redpanda
+      ports:
+        - protocol: TCP
+          port: 9092
+
+---
+apiVersion: networking.k8s.io/v1
+kind: NetworkPolicy
+metadata:
+  name: database-migration-access
+  namespace: agentshield
+spec:
+  podSelector:
+    matchLabels:
+      app.kubernetes.io/name: database-migration
+
+  policyTypes:
+    - Egress
+
+  egress:
+    - to:
+        - podSelector:
+            matchLabels:
+              app: postgres
+      ports:
+        - protocol: TCP
+          port: 5432
+
+---
+apiVersion: networking.k8s.io/v1
+kind: NetworkPolicy
+metadata:
+  name: redpanda-topics-access
+  namespace: agentshield
+spec:
+  podSelector:
+    matchLabels:
+      app.kubernetes.io/name: redpanda-topics
+
+  policyTypes:
+    - Egress
+
+  egress:
+    - to:
+        - podSelector:
+            matchLabels:
+              app: redpanda
+      ports:
+        - protocol: TCP
+          port: 9092

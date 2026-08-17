@@ -1,0 +1,29 @@
+apiVersion: kustomize.config.k8s.io/v1beta1
+kind: Kustomization
+
+resources:
+  - namespace.yaml
+  - configmap.yaml
+
+  - postgres/postgres.yaml
+  - redpanda/redpanda.yaml
+  - opa/opa.yaml
+
+  - gateway/gateway.yaml
+  - credential-broker/credential-broker.yaml
+  - audit/audit.yaml
+  - detection/detection.yaml
+
+  - network/network-policies.yaml
+
+  - jobs/database-migration.yaml
+  - jobs/redpanda-topics.yaml
+
+configMapGenerator:
+  - name: agentshield-db-migrations
+    namespace: agentshield
+    files:
+      - 001_initial_schema.sql=postgres/migrations/001_initial_schema.sql
+
+generatorOptions:
+  disableNameSuffixHash: true

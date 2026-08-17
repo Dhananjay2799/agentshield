@@ -1,0 +1,100 @@
+name: Kubernetes CI
+
+on:
+  push:
+    branches:
+      - main
+      - develop
+    paths:
+      - "infrastructure/kubernetes/**"
+      - ".github/workflows/kubernetes-ci.yml"
+
+  pull_request:
+    branches:
+      - main
+      - develop
+    paths:
+      - "infrastructure/kubernetes/**"
+      - ".github/workflows/kubernetes-ci.yml"
+
+jobs:
+  validate-kubernetes:
+    name: Validate Kubernetes Manifests
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Set up kubectl
+        uses: azure/setup-kubectl@v4
+        with:
+          version: "v1.36.1"
+
+      - name: Render base manifests
+        run: |
+          kubectl kustomize infrastructure/kubernetes/base \
+            > /tmp/agentshield-base.yaml
+
+      - name: Render local overlay
+        run: |
+          kubectl kustomize infrastructure/kubernetes/overlays/local \
+            > /tmp/agentshield-local.yaml
+
+      - name: Verify rendered manifests are non-empty
+        run: |
+          test -s /tmp/agentshield-base.yaml
+          test -s /tmp/agentshield-local.yaml
+
+      - name: Validate YAML structure
+        run: |
+          kubectl apply \
+            --dry-run=client \
+            --validate=false \
+            -f /tmp/agentshield-base.yaml
+
+          kubectl apply \
+            --dry-run=client \
+            --validate=false \
+            -f /tmp/agentshield-local.yaml
+
+      - name: Ensure real Kubernetes secrets are not committed
+        shell: bash
+        run: |
+          if find infrastructure/kubernetes \
+            -type f \
+            \( -name "secret.yaml" -o -name "secrets.yaml" \) \
+            | grep -q .; then
+            echo "Real Kubernetes secret manifest detected."
+            exit 1
+          fi
+
+      - name: Scan for known development secrets
+        shell: bash
+        run: |
+          if grep -RInE \
+            'agentshield-dev-admin-2026|agentshield-dev-analyst-2026|agentshield-dev-credential-broker-2026|agentshield-local-development-secret' \
+            infrastructure/kubernetes; then
+            echo "Known development secret detected in Kubernetes manifests."
+            exit 1
+          fi
+
+      - name: Verify NetworkPolicy baseline
+        shell: bash
+        run: |
+          grep -q "name: default-deny" /tmp/agentshield-local.yaml
+          grep -q "name: postgres-ingress" /tmp/agentshield-local.yaml
+          grep -q "name: redpanda-ingress" /tmp/agentshield-local.yaml
+          grep -q "name: opa-ingress" /tmp/agentshield-local.yaml
+
+      - name: Verify bootstrap resources
+        shell: bash
+        run: |
+          grep -q "name: agentshield-database-migration" \
+            /tmp/agentshield-local.yaml
+
+          grep -q "name: agentshield-redpanda-topics" \
+            /tmp/agentshield-local.yaml
+
+          grep -q "name: agentshield-db-migrations" \
+            /tmp/agentshield-local.yaml

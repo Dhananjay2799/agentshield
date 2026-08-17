@@ -1,0 +1,93 @@
+apiVersion: batch/v1
+kind: Job
+metadata:
+  name: agentshield-redpanda-topics
+  namespace: agentshield
+  labels:
+    app.kubernetes.io/name: redpanda-topics
+    app.kubernetes.io/part-of: agentshield
+
+spec:
+  backoffLimit: 10
+
+  template:
+    metadata:
+      labels:
+        app.kubernetes.io/name: redpanda-topics
+        app.kubernetes.io/part-of: agentshield
+
+    spec:
+      restartPolicy: OnFailure
+
+      containers:
+        - name: topic-init
+          image: redpandadata/redpanda:latest
+
+          command:
+            - /bin/bash
+            - -ec
+            - |
+              echo "Waiting for Redpanda Kafka API..."
+
+              until rpk topic list \
+                -X brokers=redpanda:9092 \
+                >/dev/null 2>&1
+              do
+                echo "Redpanda Kafka API not ready yet..."
+                sleep 2
+              done
+
+              echo "Redpanda Kafka API is ready."
+
+              echo "Ensuring AgentShield security-events topic exists..."
+
+              if rpk topic list \
+                -X brokers=redpanda:9092 |
+                awk '{print $1}' |
+                grep -qx "agentshield.security.events"
+              then
+                echo "agentshield.security.events already exists"
+              else
+                rpk topic create \
+                  agentshield.security.events \
+                  -X brokers=redpanda:9092 \
+                  --partitions 1 \
+                  --replicas 1
+              fi
+
+              echo "Ensuring AgentShield DLQ topic exists..."
+
+              if rpk topic list \
+                -X brokers=redpanda:9092 |
+                awk '{print $1}' |
+                grep -qx "agentshield.security.dlq"
+              then
+                echo "agentshield.security.dlq already exists"
+              else
+                rpk topic create \
+                  agentshield.security.dlq \
+                  -X brokers=redpanda:9092 \
+                  --partitions 1 \
+                  --replicas 1
+              fi
+
+              echo "AgentShield Kafka topics:"
+              rpk topic list \
+                -X brokers=redpanda:9092
+
+              echo "AgentShield Redpanda topic bootstrap completed."
+
+          resources:
+            requests:
+              cpu: 25m
+              memory: 32Mi
+
+            limits:
+              cpu: 250m
+              memory: 128Mi
+
+          securityContext:
+            allowPrivilegeEscalation: false
+            capabilities:
+              drop:
+                - ALL
