@@ -31,32 +31,58 @@ jobs:
         with:
           version: "v1.36.1"
 
+      - name: Install kubeconform
+        shell: bash
+        run: |
+          KUBECONFORM_VERSION="0.7.0"
+
+          curl -L \
+            "https://github.com/yannh/kubeconform/releases/download/v${KUBECONFORM_VERSION}/kubeconform-linux-amd64.tar.gz" \
+            -o /tmp/kubeconform.tar.gz
+
+          tar -xzf /tmp/kubeconform.tar.gz -C /tmp
+
+          sudo install \
+            /tmp/kubeconform \
+            /usr/local/bin/kubeconform
+
+          kubeconform -v
+
       - name: Render base manifests
+        shell: bash
         run: |
           kubectl kustomize infrastructure/kubernetes/base \
             > /tmp/agentshield-base.yaml
 
       - name: Render local overlay
+        shell: bash
         run: |
           kubectl kustomize infrastructure/kubernetes/overlays/local \
             > /tmp/agentshield-local.yaml
 
       - name: Verify rendered manifests are non-empty
+        shell: bash
         run: |
           test -s /tmp/agentshield-base.yaml
           test -s /tmp/agentshield-local.yaml
 
-      - name: Validate YAML structure
+      - name: Validate base Kubernetes manifests
+        shell: bash
         run: |
-          kubectl apply \
-            --dry-run=client \
-            --validate=false \
-            -f /tmp/agentshield-base.yaml
+          kubeconform \
+            -strict \
+            -summary \
+            -kubernetes-version 1.36.0 \
+            /tmp/agentshield-base.yaml
 
-          kubectl apply \
-            --dry-run=client \
-            --validate=false \
-            -f /tmp/agentshield-local.yaml
+      - name: Validate local Kubernetes overlay
+        shell: bash
+        run: |
+          kubeconform \
+            -strict \
+            -summary \
+            -kubernetes-version 1.36.0 \
+            /tmp/agentshield-local.yaml
 
       - name: Ensure real Kubernetes secrets are not committed
         shell: bash
@@ -65,6 +91,7 @@ jobs:
             -type f \
             \( -name "secret.yaml" -o -name "secrets.yaml" \) \
             | grep -q .; then
+
             echo "Real Kubernetes secret manifest detected."
             exit 1
           fi
@@ -75,6 +102,7 @@ jobs:
           if grep -RInE \
             'agentshield-dev-admin-2026|agentshield-dev-analyst-2026|agentshield-dev-credential-broker-2026|agentshield-local-development-secret' \
             infrastructure/kubernetes; then
+
             echo "Known development secret detected in Kubernetes manifests."
             exit 1
           fi
@@ -82,10 +110,26 @@ jobs:
       - name: Verify NetworkPolicy baseline
         shell: bash
         run: |
-          grep -q "name: default-deny" /tmp/agentshield-local.yaml
-          grep -q "name: postgres-ingress" /tmp/agentshield-local.yaml
-          grep -q "name: redpanda-ingress" /tmp/agentshield-local.yaml
-          grep -q "name: opa-ingress" /tmp/agentshield-local.yaml
+          grep -q "name: default-deny" \
+            /tmp/agentshield-local.yaml
+
+          grep -q "name: postgres-ingress" \
+            /tmp/agentshield-local.yaml
+
+          grep -q "name: redpanda-ingress" \
+            /tmp/agentshield-local.yaml
+
+          grep -q "name: opa-ingress" \
+            /tmp/agentshield-local.yaml
+
+          grep -q "name: redpanda-self-access" \
+            /tmp/agentshield-local.yaml
+
+          grep -q "name: database-migration-access" \
+            /tmp/agentshield-local.yaml
+
+          grep -q "name: redpanda-topics-access" \
+            /tmp/agentshield-local.yaml
 
       - name: Verify bootstrap resources
         shell: bash
