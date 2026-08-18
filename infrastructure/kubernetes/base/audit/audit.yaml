@@ -49,7 +49,7 @@ spec:
 
       containers:
         - name: audit
-          image: agentshield-audit:local
+          image: agentshield-audit:phase29-prometheus
           imagePullPolicy: IfNotPresent
 
           ports:

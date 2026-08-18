@@ -6,6 +6,7 @@ import (
 	"time"
 
 	"github.com/dhananjay2799/agentshield/services/credential-broker/internal/gateway"
+	brokermetrics "github.com/dhananjay2799/agentshield/services/credential-broker/internal/metrics"
 	"github.com/dhananjay2799/agentshield/services/credential-broker/internal/models"
 	"github.com/dhananjay2799/agentshield/services/credential-broker/internal/token"
 )
@@ -13,15 +14,18 @@ import (
 type CredentialHandler struct {
 	Issuer        *token.Issuer
 	GatewayClient *gateway.Client
+	Metrics       *brokermetrics.Metrics
 }
 
 func NewCredentialHandler(
 	issuer *token.Issuer,
 	gatewayClient *gateway.Client,
+	metrics *brokermetrics.Metrics,
 ) *CredentialHandler {
 	return &CredentialHandler{
 		Issuer:        issuer,
 		GatewayClient: gatewayClient,
+		Metrics:       metrics,
 	}
 }
 
@@ -29,11 +33,14 @@ func (h *CredentialHandler) Issue(
 	w http.ResponseWriter,
 	r *http.Request,
 ) {
+	h.Metrics.RecordRequest()
+
 	var req models.IssueCredentialRequest
 
 	if err := json.NewDecoder(
 		r.Body,
 	).Decode(&req); err != nil {
+		h.Metrics.RecordRejected()
 		writeJSON(
 			w,
 			http.StatusBadRequest,
@@ -49,6 +56,7 @@ func (h *CredentialHandler) Issue(
 		req.SessionID == "" ||
 		req.Action == "" ||
 		req.Resource == "" {
+		h.Metrics.RecordRejected()
 		writeJSON(
 			w,
 			http.StatusBadRequest,
@@ -70,6 +78,7 @@ func (h *CredentialHandler) Issue(
 		)
 
 	if err != nil {
+		h.Metrics.RecordGatewayError()
 		writeJSON(
 			w,
 			http.StatusBadGateway,
@@ -81,6 +90,7 @@ func (h *CredentialHandler) Issue(
 	}
 
 	if !claim.Claimed {
+		h.Metrics.RecordRejected()
 		writeJSON(
 			w,
 			http.StatusForbidden,
@@ -101,6 +111,8 @@ func (h *CredentialHandler) Issue(
 		grant.SessionID != req.SessionID ||
 		grant.Action != req.Action ||
 		grant.Resource != req.Resource {
+		h.Metrics.RecordRejected()
+		h.Metrics.RecordScopeMismatch()
 		writeJSON(
 			w,
 			http.StatusForbidden,
@@ -127,6 +139,7 @@ func (h *CredentialHandler) Issue(
 		)
 
 	if err != nil {
+		h.Metrics.RecordSigningError()
 		writeJSON(
 			w,
 			http.StatusInternalServerError,
@@ -164,6 +177,8 @@ func (h *CredentialHandler) Issue(
 			ExpiresAt: expiresAt,
 			Status:    "active",
 		}
+
+	h.Metrics.RecordIssued()
 
 	writeJSON(
 		w,

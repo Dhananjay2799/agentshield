@@ -4,6 +4,7 @@ import (
 	"context"
 	"encoding/json"
 	"errors"
+	"fmt"
 	"log"
 	"net/http"
 	"os"
@@ -144,6 +145,51 @@ func main() {
 
 	mux.HandleFunc(
 		"GET /metrics",
+		func(
+			w http.ResponseWriter,
+			r *http.Request,
+		) {
+			metrics := auditConsumer.Metrics()
+
+			w.Header().Set(
+				"Content-Type",
+				"text/plain; version=0.0.4; charset=utf-8",
+			)
+
+			w.WriteHeader(http.StatusOK)
+
+			_, _ = fmt.Fprintf(
+				w,
+				"# HELP agentshield_audit_processed_events_total Total number of valid security events processed by the audit service.\n"+
+					"# TYPE agentshield_audit_processed_events_total counter\n"+
+					"agentshield_audit_processed_events_total %d\n"+
+					"# HELP agentshield_audit_rejected_events_total Total number of malformed or invalid security events rejected by the audit service.\n"+
+					"# TYPE agentshield_audit_rejected_events_total counter\n"+
+					"agentshield_audit_rejected_events_total %d\n"+
+					"# HELP agentshield_audit_fetch_errors_total Total number of Kafka fetch errors encountered by the audit service.\n"+
+					"# TYPE agentshield_audit_fetch_errors_total counter\n"+
+					"agentshield_audit_fetch_errors_total %d\n"+
+					"# HELP agentshield_audit_commit_failures_total Total number of Kafka offset commit failures encountered by the audit service.\n"+
+					"# TYPE agentshield_audit_commit_failures_total counter\n"+
+					"agentshield_audit_commit_failures_total %d\n"+
+					"# HELP agentshield_audit_last_offset Last successfully handled Kafka record offset.\n"+
+					"# TYPE agentshield_audit_last_offset gauge\n"+
+					"agentshield_audit_last_offset %d\n"+
+					"# HELP agentshield_audit_last_partition Last successfully handled Kafka partition.\n"+
+					"# TYPE agentshield_audit_last_partition gauge\n"+
+					"agentshield_audit_last_partition %d\n",
+				metrics.ProcessedEvents,
+				metrics.RejectedEvents,
+				metrics.FetchErrors,
+				metrics.CommitFailures,
+				metrics.LastOffset,
+				metrics.LastPartition,
+			)
+		},
+	)
+
+	mux.HandleFunc(
+		"GET /debug/metrics",
 		func(
 			w http.ResponseWriter,
 			r *http.Request,

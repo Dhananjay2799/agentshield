@@ -637,6 +637,26 @@ func main() {
 			w http.ResponseWriter,
 			r *http.Request,
 		) {
+			w.Header().Set(
+				"Content-Type",
+				"text/plain; version=0.0.4; charset=utf-8",
+			)
+
+			if err := metrics.WritePrometheus(w); err != nil {
+				log.Printf(
+					"failed to write Prometheus metrics: %v",
+					err,
+				)
+			}
+		},
+	)
+
+	mux.HandleFunc(
+		"GET /debug/metrics",
+		func(
+			w http.ResponseWriter,
+			r *http.Request,
+		) {
 			writeJSON(
 				w,
 				http.StatusOK,

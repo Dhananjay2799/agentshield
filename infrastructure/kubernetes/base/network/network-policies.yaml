@@ -221,6 +221,9 @@ spec:
         - podSelector:
             matchLabels:
               app: gateway
+        - podSelector:
+            matchLabels:
+              app: prometheus
       ports:
         - protocol: TCP
           port: 8181
@@ -339,3 +342,111 @@ spec:
       ports:
         - protocol: TCP
           port: 9092
+
+---
+apiVersion: networking.k8s.io/v1
+kind: NetworkPolicy
+metadata:
+  name: prometheus-egress
+  namespace: agentshield
+spec:
+  podSelector:
+    matchLabels:
+      app: prometheus
+
+  policyTypes:
+    - Egress
+
+  egress:
+    - to:
+        - podSelector:
+            matchLabels:
+              app: gateway
+      ports:
+        - protocol: TCP
+          port: 8080
+
+    - to:
+        - podSelector:
+            matchLabels:
+              app: credential-broker
+      ports:
+        - protocol: TCP
+          port: 8081
+
+    - to:
+        - podSelector:
+            matchLabels:
+              app: audit
+      ports:
+        - protocol: TCP
+          port: 8082
+
+    - to:
+        - podSelector:
+            matchLabels:
+              app: detection
+      ports:
+        - protocol: TCP
+          port: 8083
+
+    - to:
+        - podSelector:
+            matchLabels:
+              app: opa
+      ports:
+        - protocol: TCP
+          port: 8181
+
+---
+apiVersion: networking.k8s.io/v1
+kind: NetworkPolicy
+metadata:
+  name: prometheus-ingress
+  namespace: agentshield
+spec:
+  podSelector:
+    matchLabels:
+      app: prometheus
+
+  policyTypes:
+    - Ingress
+
+  ingress:
+    - {}
+
+---
+apiVersion: networking.k8s.io/v1
+kind: NetworkPolicy
+metadata:
+  name: grafana-egress
+  namespace: agentshield
+spec:
+  podSelector:
+    matchLabels:
+      app: grafana
+  policyTypes:
+    - Egress
+  egress:
+    - to:
+        - podSelector:
+            matchLabels:
+              app: prometheus
+      ports:
+        - protocol: TCP
+          port: 9090
+
+---
+apiVersion: networking.k8s.io/v1
+kind: NetworkPolicy
+metadata:
+  name: grafana-ingress
+  namespace: agentshield
+spec:
+  podSelector:
+    matchLabels:
+      app: grafana
+  policyTypes:
+    - Ingress
+  ingress:
+    - {}

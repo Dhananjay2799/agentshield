@@ -1,0 +1,102 @@
+groups:
+  - name: agentshield-security
+    rules:
+      - alert: AgentShieldHighRiskActionsDetected
+        expr: increase(agentshield_gateway_high_risk_actions_total[5m]) > 0
+        for: 30s
+        labels:
+          severity: warning
+          service: gateway
+        annotations:
+          summary: "High-risk autonomous-agent activity detected"
+          description: "AgentShield observed one or more high-risk actions during the last 5 minutes."
+
+      - alert: AgentShieldDeniedActionSpike
+        expr: increase(agentshield_gateway_deny_total[5m]) >= 5
+        for: 1m
+        labels:
+          severity: critical
+          service: gateway
+        annotations:
+          summary: "Spike in denied autonomous-agent actions"
+          description: "At least 5 actions were denied by AgentShield within 5 minutes."
+
+      - alert: AgentShieldOPAErrors
+        expr: increase(agentshield_gateway_opa_errors_total[5m]) > 0
+        for: 30s
+        labels:
+          severity: critical
+          service: gateway
+        annotations:
+          summary: "OPA policy-engine failures detected"
+          description: "AgentShield Gateway encountered one or more OPA evaluation failures."
+
+      - alert: AgentShieldKafkaPublishFailures
+        expr: increase(agentshield_gateway_kafka_publish_failures_total[5m]) > 0
+        for: 30s
+        labels:
+          severity: critical
+          service: gateway
+        annotations:
+          summary: "Gateway failed to publish security events"
+          description: "AgentShield Gateway failed to publish one or more security events to Kafka/Redpanda."
+
+      - alert: AgentShieldCredentialRejectionSpike
+        expr: increase(agentshield_credential_broker_rejected_total[5m]) >= 3
+        for: 1m
+        labels:
+          severity: warning
+          service: credential-broker
+        annotations:
+          summary: "Credential issuance rejection spike"
+          description: "At least 3 credential requests were rejected during the last 5 minutes."
+
+      - alert: AgentShieldCredentialGatewayErrors
+        expr: increase(agentshield_credential_broker_gateway_errors_total[5m]) > 0
+        for: 30s
+        labels:
+          severity: critical
+          service: credential-broker
+        annotations:
+          summary: "Credential Broker cannot reach Gateway"
+          description: "Credential Broker encountered failures while claiming authorization grants from Gateway."
+
+      - alert: AgentShieldCredentialSigningErrors
+        expr: increase(agentshield_credential_broker_signing_errors_total[5m]) > 0
+        for: 30s
+        labels:
+          severity: critical
+          service: credential-broker
+        annotations:
+          summary: "Credential signing failure"
+          description: "AgentShield Credential Broker failed to issue one or more short-lived credentials."
+
+      - alert: AgentShieldDLQFailures
+        expr: increase(agentshield_detection_dlq_failures_total[5m]) > 0
+        for: 30s
+        labels:
+          severity: critical
+          service: detection
+        annotations:
+          summary: "Dead-letter queue publication failure"
+          description: "Detection failed to publish malformed security events to the DLQ."
+
+      - alert: AgentShieldDetectionFetchErrors
+        expr: increase(agentshield_detection_fetch_errors_total[5m]) > 0
+        for: 30s
+        labels:
+          severity: warning
+          service: detection
+        annotations:
+          summary: "Detection Kafka fetch errors"
+          description: "AgentShield Detection encountered Kafka fetch errors."
+
+      - alert: AgentShieldAuditFetchErrors
+        expr: increase(agentshield_audit_fetch_errors_total[5m]) > 0
+        for: 30s
+        labels:
+          severity: warning
+          service: audit
+        annotations:
+          summary: "Audit Kafka fetch errors"
+          description: "AgentShield Audit encountered Kafka fetch errors."

@@ -11,6 +11,7 @@ import (
 	"github.com/dhananjay2799/agentshield/services/gateway/internal/database"
 	"github.com/dhananjay2799/agentshield/services/gateway/internal/events"
 	"github.com/dhananjay2799/agentshield/services/gateway/internal/handlers"
+	gatewaymetrics "github.com/dhananjay2799/agentshield/services/gateway/internal/metrics"
 	"github.com/dhananjay2799/agentshield/services/gateway/internal/middleware"
 	"github.com/dhananjay2799/agentshield/services/gateway/internal/opa"
 	"github.com/dhananjay2799/agentshield/services/gateway/internal/repository"
@@ -81,6 +82,13 @@ func main() {
 
 	policyRepository :=
 		repository.NewPolicyRepository(db)
+
+	// ============================================================
+	// METRICS
+	// ============================================================
+
+	gatewayMetrics :=
+		gatewaymetrics.New()
 
 	// ============================================================
 	// OPA
@@ -248,6 +256,7 @@ func main() {
 			grantRepository,
 			opaClient,
 			eventProducer,
+			gatewayMetrics,
 		)
 
 	approvalHandler :=
@@ -414,7 +423,7 @@ func main() {
 		http.NewServeMux()
 
 	// ------------------------------------------------------------
-	// PUBLIC HEALTH
+	// PUBLIC HEALTH & METRICS
 	// ------------------------------------------------------------
 
 	mux.HandleFunc(
@@ -440,6 +449,16 @@ func main() {
 				)
 			},
 		),
+	)
+
+	mux.HandleFunc(
+		"GET /metrics",
+		gatewayMetrics.Handler,
+	)
+
+	mux.HandleFunc(
+		"GET /debug/metrics",
+		gatewayMetrics.DebugHandler,
 	)
 
 	// ------------------------------------------------------------

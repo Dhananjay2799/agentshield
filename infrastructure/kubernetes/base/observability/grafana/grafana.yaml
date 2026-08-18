@@ -1,0 +1,145 @@
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: grafana-datasources
+  namespace: agentshield
+  labels:
+    app.kubernetes.io/name: grafana
+    app.kubernetes.io/part-of: agentshield
+data:
+  datasource.yaml: |
+    apiVersion: 1
+
+    datasources:
+      - name: Prometheus
+        uid: prometheus
+        type: prometheus
+        access: proxy
+        url: http://prometheus:9090
+        isDefault: true
+
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: grafana
+  namespace: agentshield
+  labels:
+    app: grafana
+    app.kubernetes.io/name: grafana
+    app.kubernetes.io/part-of: agentshield
+spec:
+  type: ClusterIP
+  selector:
+    app: grafana
+  ports:
+    - name: http
+      port: 3000
+      targetPort: 3000
+
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: grafana
+  namespace: agentshield
+  labels:
+    app.kubernetes.io/name: grafana
+    app.kubernetes.io/part-of: agentshield
+spec:
+  replicas: 1
+
+  selector:
+    matchLabels:
+      app: grafana
+
+  template:
+    metadata:
+      labels:
+        app: grafana
+        app.kubernetes.io/name: grafana
+        app.kubernetes.io/part-of: agentshield
+
+    spec:
+      securityContext:
+        seccompProfile:
+          type: RuntimeDefault
+
+      containers:
+        - name: grafana
+          image: grafana/grafana:latest
+          imagePullPolicy: IfNotPresent
+
+          ports:
+            - name: http
+              containerPort: 3000
+
+          env:
+            - name: GF_SECURITY_ADMIN_USER
+              value: admin
+
+            - name: GF_SECURITY_ADMIN_PASSWORD
+              value: agentshield-local-admin
+
+            - name: GF_USERS_ALLOW_SIGN_UP
+              value: "false"
+
+          volumeMounts:
+            - name: datasource
+              mountPath: /etc/grafana/provisioning/datasources
+              readOnly: true
+
+            - name: dashboard-provider
+              mountPath: /etc/grafana/provisioning/dashboards
+              readOnly: true
+
+            - name: dashboards
+              mountPath: /var/lib/grafana/dashboards
+              readOnly: true
+
+          readinessProbe:
+            httpGet:
+              path: /api/health
+              port: 3000
+            periodSeconds: 5
+            timeoutSeconds: 3
+            failureThreshold: 5
+
+          livenessProbe:
+            httpGet:
+              path: /api/health
+              port: 3000
+            periodSeconds: 10
+            timeoutSeconds: 3
+            failureThreshold: 5
+
+          resources:
+            requests:
+              cpu: 100m
+              memory: 128Mi
+
+            limits:
+              cpu: 500m
+              memory: 512Mi
+
+          securityContext:
+            allowPrivilegeEscalation: false
+            runAsNonRoot: true
+            runAsUser: 472
+            runAsGroup: 472
+            capabilities:
+              drop:
+                - ALL
+
+      volumes:
+        - name: datasource
+          configMap:
+            name: grafana-datasources
+
+        - name: dashboard-provider
+          configMap:
+            name: grafana-dashboard-provider
+
+        - name: dashboards
+          configMap:
+            name: grafana-dashboards

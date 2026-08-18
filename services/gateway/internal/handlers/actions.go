@@ -7,6 +7,7 @@ import (
 	"time"
 
 	"github.com/dhananjay2799/agentshield/services/gateway/internal/events"
+	gatewaymetrics "github.com/dhananjay2799/agentshield/services/gateway/internal/metrics"
 	"github.com/dhananjay2799/agentshield/services/gateway/internal/middleware"
 	"github.com/dhananjay2799/agentshield/services/gateway/internal/models"
 	"github.com/dhananjay2799/agentshield/services/gateway/internal/opa"
@@ -21,6 +22,7 @@ type ActionHandler struct {
 	GrantRepository    *repository.GrantRepository
 	OPAClient          *opa.Client
 	EventProducer      *events.Producer
+	Metrics            *gatewaymetrics.Metrics
 }
 
 func NewActionHandler(
@@ -30,6 +32,7 @@ func NewActionHandler(
 	grantRepository *repository.GrantRepository,
 	opaClient *opa.Client,
 	eventProducer *events.Producer,
+	metrics *gatewaymetrics.Metrics,
 ) *ActionHandler {
 	return &ActionHandler{
 		AgentRepository:    agentRepository,
@@ -38,6 +41,7 @@ func NewActionHandler(
 		GrantRepository:    grantRepository,
 		OPAClient:          opaClient,
 		EventProducer:      eventProducer,
+		Metrics:            metrics,
 	}
 }
 
@@ -102,6 +106,8 @@ func (h *ActionHandler) Evaluate(w http.ResponseWriter, r *http.Request) {
 
 	if err != nil {
 		log.Printf("OPA evaluation failed: %v", err)
+
+		h.Metrics.RecordOPAError()
 
 		// Fail closed: AgentShield does not authorize an action
 		// when its policy engine cannot be reached.
@@ -189,6 +195,11 @@ func (h *ActionHandler) Evaluate(w http.ResponseWriter, r *http.Request) {
 		})
 		return
 	}
+
+	h.Metrics.RecordDecision(
+		decision,
+		riskResult.Score,
+	)
 
 	policyTrace := models.PolicyTrace{
 		Engine:   "opa",
@@ -322,6 +333,8 @@ func (h *ActionHandler) Evaluate(w http.ResponseWriter, r *http.Request) {
 	)
 
 	if err := h.EventProducer.Publish(r.Context(), event); err != nil {
+		h.Metrics.RecordKafkaFailure()
+
 		log.Printf("failed to publish security event: %v", err)
 	} else {
 		log.Printf("security event published successfully")

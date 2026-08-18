@@ -9,6 +9,9 @@ resources:
   - redpanda/redpanda.yaml
   - opa/opa.yaml
 
+  - observability/prometheus/prometheus.yaml
+  - observability/grafana/grafana.yaml
+
   - gateway/gateway.yaml
   - credential-broker/credential-broker.yaml
   - audit/audit.yaml
@@ -24,6 +27,21 @@ configMapGenerator:
     namespace: agentshield
     files:
       - 001_initial_schema.sql=postgres/migrations/001_initial_schema.sql
+
+  - name: prometheus-alert-rules
+    namespace: agentshield
+    files:
+      - agentshield-alerts.yaml=observability/prometheus/alerts.yaml
+
+  - name: grafana-dashboard-provider
+    namespace: agentshield
+    files:
+      - dashboard.yaml=observability/grafana/dashboard-provider.yaml
+
+  - name: grafana-dashboards
+    namespace: agentshield
+    files:
+      - agentshield-security-operations.json=observability/grafana/dashboards/agentshield-security-operations.json
 
 generatorOptions:
   disableNameSuffixHash: true

@@ -1,6 +1,8 @@
 package metrics
 
 import (
+	"fmt"
+	"io"
 	"sync"
 	"time"
 )
@@ -122,6 +124,12 @@ func (m *Metrics) Snapshot() Snapshot {
 	m.mu.RLock()
 	defer m.mu.RUnlock()
 
+	var lastProcessedAt *time.Time
+	if m.lastProcessedAt != nil {
+		value := *m.lastProcessedAt
+		lastProcessedAt = &value
+	}
+
 	return Snapshot{
 		Topic:              m.topic,
 		ProcessedEvents:    m.processedEvents,
@@ -135,6 +143,101 @@ func (m *Metrics) Snapshot() Snapshot {
 		DLQFailures:        m.dlqFailures,
 		LastOffset:         m.lastOffset,
 		LastPartition:      m.lastPartition,
-		LastProcessedAt:    m.lastProcessedAt,
+		LastProcessedAt:    lastProcessedAt,
 	}
+}
+
+func (m *Metrics) WritePrometheus(w io.Writer) error {
+	snapshot := m.Snapshot()
+
+	metrics := []struct {
+		help  string
+		name  string
+		mtype string
+		value any
+	}{
+		{
+			"Total number of valid security events processed by the detection service.",
+			"agentshield_detection_processed_events_total",
+			"counter",
+			snapshot.ProcessedEvents,
+		},
+		{
+			"Total number of denied security events observed by the detection service.",
+			"agentshield_detection_denied_events_total",
+			"counter",
+			snapshot.DeniedEvents,
+		},
+		{
+			"Total number of high-risk security events observed by the detection service.",
+			"agentshield_detection_high_risk_events_total",
+			"counter",
+			snapshot.HighRiskEvents,
+		},
+		{
+			"Total number of security incidents triggered by the detection service.",
+			"agentshield_detection_incidents_triggered_total",
+			"counter",
+			snapshot.IncidentsTriggered,
+		},
+		{
+			"Total number of malformed or invalid security events rejected by the detection service.",
+			"agentshield_detection_rejected_events_total",
+			"counter",
+			snapshot.RejectedEvents,
+		},
+		{
+			"Total number of Kafka fetch errors encountered by the detection service.",
+			"agentshield_detection_fetch_errors_total",
+			"counter",
+			snapshot.FetchErrors,
+		},
+		{
+			"Total number of Kafka offset commit failures encountered by the detection service.",
+			"agentshield_detection_commit_failures_total",
+			"counter",
+			snapshot.CommitFailures,
+		},
+		{
+			"Total number of malformed security events successfully published to the dead-letter queue.",
+			"agentshield_detection_dlq_published_total",
+			"counter",
+			snapshot.DLQPublished,
+		},
+		{
+			"Total number of failures while publishing security events to the dead-letter queue.",
+			"agentshield_detection_dlq_failures_total",
+			"counter",
+			snapshot.DLQFailures,
+		},
+		{
+			"Last successfully processed Kafka record offset.",
+			"agentshield_detection_last_offset",
+			"gauge",
+			snapshot.LastOffset,
+		},
+		{
+			"Last successfully processed Kafka partition.",
+			"agentshield_detection_last_partition",
+			"gauge",
+			snapshot.LastPartition,
+		},
+	}
+
+	for _, metric := range metrics {
+		if _, err := fmt.Fprintf(
+			w,
+			"# HELP %s %s\n# TYPE %s %s\n%s %v\n",
+			metric.name,
+			metric.help,
+			metric.name,
+			metric.mtype,
+			metric.name,
+			metric.value,
+		); err != nil {
+			return err
+		}
+	}
+
+	return nil
 }

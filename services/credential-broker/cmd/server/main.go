@@ -9,6 +9,7 @@ import (
 
 	"github.com/dhananjay2799/agentshield/services/credential-broker/internal/gateway"
 	"github.com/dhananjay2799/agentshield/services/credential-broker/internal/handlers"
+	brokermetrics "github.com/dhananjay2799/agentshield/services/credential-broker/internal/metrics"
 	"github.com/dhananjay2799/agentshield/services/credential-broker/internal/token"
 )
 
@@ -60,10 +61,14 @@ func main() {
 			gatewayAPIKey,
 		)
 
+	brokerMetrics :=
+		brokermetrics.New()
+
 	credentialHandler :=
 		handlers.NewCredentialHandler(
 			issuer,
 			gatewayClient,
+			brokerMetrics,
 		)
 
 	mux := http.NewServeMux()
@@ -92,6 +97,16 @@ func main() {
 				},
 			)
 		},
+	)
+
+	mux.HandleFunc(
+		"GET /metrics",
+		brokerMetrics.Handler,
+	)
+
+	mux.HandleFunc(
+		"GET /debug/metrics",
+		brokerMetrics.DebugHandler,
 	)
 
 	mux.HandleFunc(
