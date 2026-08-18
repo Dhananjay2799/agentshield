@@ -49,7 +49,7 @@ spec:
 
       containers:
         - name: gateway
-          image: agentshield-gateway:phase29-prometheus
+          image: agentshield-gateway:phase31-soc-metrics
           imagePullPolicy: IfNotPresent
 
           ports:

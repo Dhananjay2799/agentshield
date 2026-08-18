@@ -74,6 +74,7 @@ func (r *IncidentRepository) UpsertOpenIncident(
 				description = $4,
 				event_count = event_count + 1,
 				last_seen_at = NOW(),
+				updated_at = NOW(),
 				metadata = metadata || $5::jsonb
 			WHERE id = $6
 			`,
@@ -137,7 +138,8 @@ func (r *IncidentRepository) Resolve(
 		SET
 			status = 'resolved',
 			resolved_at = NOW(),
-			last_seen_at = NOW()
+			last_seen_at = NOW(),
+			updated_at = NOW()
 		WHERE id = $1
 		`,
 		id,
@@ -159,7 +161,8 @@ func (r *IncidentRepository) ExpireStaleOpenIncidents(
 		UPDATE security_incidents
 		SET
 			status = 'resolved',
-			resolved_at = NOW()
+			resolved_at = NOW(),
+			updated_at = NOW()
 		WHERE status = 'open'
 		  AND last_seen_at < $1
 		`,

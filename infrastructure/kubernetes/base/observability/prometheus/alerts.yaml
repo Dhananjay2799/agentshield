@@ -100,3 +100,23 @@ groups:
         annotations:
           summary: "Audit Kafka fetch errors"
           description: "AgentShield Audit encountered Kafka fetch errors."
+
+      - alert: AgentShieldCriticalIncidentsOpen
+        expr: agentshield_incidents_critical_open > 0
+        for: 1m
+        labels:
+          severity: critical
+          service: gateway
+        annotations:
+          summary: "Critical AgentShield security incidents remain open"
+          description: "One or more critical AgentShield security incidents are currently open and require SOC attention."
+
+      - alert: AgentShieldUnassignedIncidentsOpen
+        expr: agentshield_incidents_unassigned_open > 0
+        for: 2m
+        labels:
+          severity: warning
+          service: gateway
+        annotations:
+          summary: "Open AgentShield incidents are unassigned"
+          description: "One or more open AgentShield security incidents have no assigned SOC analyst."

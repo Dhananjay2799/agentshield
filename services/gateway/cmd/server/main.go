@@ -88,7 +88,9 @@ func main() {
 	// ============================================================
 
 	gatewayMetrics :=
-		gatewaymetrics.New()
+		gatewaymetrics.New(
+			incidentRepository,
+		)
 
 	// ============================================================
 	// OPA

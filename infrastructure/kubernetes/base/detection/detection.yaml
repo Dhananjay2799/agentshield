@@ -49,7 +49,7 @@ spec:
 
       containers:
         - name: detection
-          image: agentshield-detection:phase29-observability
+          image: agentshield-detection:phase31-incidents
           imagePullPolicy: IfNotPresent
 
           ports:

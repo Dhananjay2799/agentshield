@@ -58,13 +58,18 @@ spec:
               done
 
               echo "PostgreSQL is ready."
-              echo "Applying AgentShield database migration..."
+              echo "Applying AgentShield database migrations..."
 
               psql \
+                -h "${PGHOST}" \
+                -p "${PGPORT}" \
+                -U "${PGUSER}" \
+                -d "${PGDATABASE}" \
                 -v ON_ERROR_STOP=1 \
-                -f /migrations/001_initial_schema.sql
+                -f /migrations/001_initial_schema.sql \
+                -f /migrations/002_incident_lifecycle.sql
 
-              echo "AgentShield database migration completed."
+              echo "AgentShield database migrations completed."
 
           volumeMounts:
             - name: migrations
