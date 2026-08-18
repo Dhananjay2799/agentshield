@@ -15,12 +15,24 @@ data:
     rule_files:
       - /etc/prometheus/rules/*.yaml
 
+    alerting:
+      alertmanagers:
+        - static_configs:
+            - targets:
+                - alertmanager:9093
+
     scrape_configs:
       - job_name: "gateway"
         metrics_path: /metrics
         static_configs:
           - targets:
               - gateway:8080
+
+      - job_name: "alertmanager"
+        metrics_path: /metrics
+        static_configs:
+          - targets:
+              - alertmanager:9093
 
       - job_name: "credential-broker"
         metrics_path: /metrics

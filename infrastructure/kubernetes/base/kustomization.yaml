@@ -11,6 +11,8 @@ resources:
 
   - observability/prometheus/prometheus.yaml
   - observability/grafana/grafana.yaml
+  - observability/alertmanager/alertmanager.yaml
+  - observability/alertmanager/alert-receiver.yaml
 
   - gateway/gateway.yaml
   - credential-broker/credential-broker.yaml
