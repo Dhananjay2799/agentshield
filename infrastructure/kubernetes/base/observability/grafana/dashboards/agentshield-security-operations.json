@@ -2133,6 +2133,243 @@
                                    ],
                        "title":  "Adaptive Anomaly Activity",
                        "type":  "timeseries"
+                   },
+                   {
+                       "id":  34,
+                       "type":  "stat",
+                       "title":  "ML Predictions",
+                       "gridPos":  {
+                                       "y":  64,
+                                       "w":  6,
+                                       "x":  0,
+                                       "h":  4
+                                   },
+                       "datasource":  {
+                                          "type":  "prometheus",
+                                          "uid":  "prometheus"
+                                      },
+                       "targets":  [
+                                       {
+                                           "refId":  "A",
+                                           "expr":  "agentshield_detection_ml_predictions_total"
+                                       }
+                                   ],
+                       "options":  {
+                                       "textMode":  "auto",
+                                       "colorMode":  "value",
+                                       "graphMode":  "area",
+                                       "reduceOptions":  {
+                                                             "values":  false,
+                                                             "calcs":  [
+                                                                           "lastNotNull"
+                                                                       ],
+                                                             "fields":  ""
+                                                         },
+                                       "justifyMode":  "auto",
+                                       "orientation":  "auto"
+                                   },
+                       "fieldConfig":  {
+                                           "defaults":  {
+
+                                                        },
+                                           "overrides":  [
+
+                                                         ]
+                                       }
+                   },
+                   {
+                       "id":  35,
+                       "type":  "stat",
+                       "title":  "ML Neural Anomalies",
+                       "gridPos":  {
+                                       "y":  64,
+                                       "w":  6,
+                                       "x":  6,
+                                       "h":  4
+                                   },
+                       "datasource":  {
+                                          "type":  "prometheus",
+                                          "uid":  "prometheus"
+                                      },
+                       "targets":  [
+                                       {
+                                           "refId":  "A",
+                                           "expr":  "agentshield_detection_ml_anomalies_total"
+                                       }
+                                   ],
+                       "options":  {
+                                       "textMode":  "auto",
+                                       "colorMode":  "value",
+                                       "graphMode":  "area",
+                                       "reduceOptions":  {
+                                                             "values":  false,
+                                                             "calcs":  [
+                                                                           "lastNotNull"
+                                                                       ],
+                                                             "fields":  ""
+                                                         },
+                                       "justifyMode":  "auto",
+                                       "orientation":  "auto"
+                                   },
+                       "fieldConfig":  {
+                                           "defaults":  {
+
+                                                        },
+                                           "overrides":  [
+
+                                                         ]
+                                       }
+                   },
+                   {
+                       "id":  36,
+                       "type":  "stat",
+                       "title":  "ML Inference Failures",
+                       "gridPos":  {
+                                       "y":  64,
+                                       "w":  6,
+                                       "x":  12,
+                                       "h":  4
+                                   },
+                       "datasource":  {
+                                          "type":  "prometheus",
+                                          "uid":  "prometheus"
+                                      },
+                       "targets":  [
+                                       {
+                                           "refId":  "A",
+                                           "expr":  "agentshield_detection_ml_failures_total"
+                                       }
+                                   ],
+                       "options":  {
+                                       "textMode":  "auto",
+                                       "colorMode":  "value",
+                                       "graphMode":  "area",
+                                       "reduceOptions":  {
+                                                             "values":  false,
+                                                             "calcs":  [
+                                                                           "lastNotNull"
+                                                                       ],
+                                                             "fields":  ""
+                                                         },
+                                       "justifyMode":  "auto",
+                                       "orientation":  "auto"
+                                   },
+                       "fieldConfig":  {
+                                           "defaults":  {
+
+                                                        },
+                                           "overrides":  [
+
+                                                         ]
+                                       }
+                   },
+                   {
+                       "id":  37,
+                       "type":  "stat",
+                       "title":  "ML Windows Skipped",
+                       "gridPos":  {
+                                       "y":  64,
+                                       "w":  6,
+                                       "x":  18,
+                                       "h":  4
+                                   },
+                       "datasource":  {
+                                          "type":  "prometheus",
+                                          "uid":  "prometheus"
+                                      },
+                       "targets":  [
+                                       {
+                                           "refId":  "A",
+                                           "expr":  "agentshield_detection_ml_skipped_insufficient_window_total"
+                                       }
+                                   ],
+                       "options":  {
+                                       "textMode":  "auto",
+                                       "colorMode":  "value",
+                                       "graphMode":  "area",
+                                       "reduceOptions":  {
+                                                             "values":  false,
+                                                             "calcs":  [
+                                                                           "lastNotNull"
+                                                                       ],
+                                                             "fields":  ""
+                                                         },
+                                       "justifyMode":  "auto",
+                                       "orientation":  "auto"
+                                   },
+                       "fieldConfig":  {
+                                           "defaults":  {
+
+                                                        },
+                                           "overrides":  [
+
+                                                         ]
+                                       }
+                   },
+                   {
+                       "id":  38,
+                       "type":  "timeseries",
+                       "title":  "Neural Detection Activity",
+                       "gridPos":  {
+                                       "y":  68,
+                                       "w":  24,
+                                       "x":  0,
+                                       "h":  8
+                                   },
+                       "datasource":  {
+                                          "type":  "prometheus",
+                                          "uid":  "prometheus"
+                                      },
+                       "targets":  [
+                                       {
+                                           "legendFormat":  "Predictions",
+                                           "expr":  "rate(agentshield_detection_ml_predictions_total[5m])",
+                                           "refId":  "A"
+                                       },
+                                       {
+                                           "legendFormat":  "Anomalies",
+                                           "expr":  "rate(agentshield_detection_ml_anomalies_total[5m])",
+                                           "refId":  "B"
+                                       },
+                                       {
+                                           "legendFormat":  "Failures",
+                                           "expr":  "rate(agentshield_detection_ml_failures_total[5m])",
+                                           "refId":  "C"
+                                       },
+                                       {
+                                           "legendFormat":  "Skipped",
+                                           "expr":  "rate(agentshield_detection_ml_skipped_insufficient_window_total[5m])",
+                                           "refId":  "D"
+                                       }
+                                   ],
+                       "options":  {
+                                       "legend":  {
+                                                      "placement":  "bottom",
+                                                      "calcs":  [
+
+                                                                ],
+                                                      "displayMode":  "list"
+                                                  },
+                                       "tooltip":  {
+                                                       "sort":  "none",
+                                                       "mode":  "multi"
+                                                   }
+                                   },
+                       "fieldConfig":  {
+                                           "defaults":  {
+                                                            "custom":  {
+                                                                           "fillOpacity":  0,
+                                                                           "spanNulls":  false,
+                                                                           "showPoints":  "auto",
+                                                                           "drawStyle":  "line",
+                                                                           "lineWidth":  1,
+                                                                           "lineInterpolation":  "linear"
+                                                                       }
+                                                        },
+                                           "overrides":  [
+
+                                                         ]
+                                       }
                    }
                ],
     "refresh":  "10s",

@@ -1,0 +1,7 @@
+torch
+pytest
+numpy
+fastapi
+uvicorn[standard]
+prometheus-client
+httpx

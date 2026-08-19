@@ -1,0 +1,28 @@
+{
+  "config": {
+    "seed": 42,
+    "epochs": 120,
+    "batch_size": 64,
+    "learning_rate": 0.001,
+    "validation_ratio": 0.2,
+    "threshold_quantile": 0.99
+  },
+  "metrics": {
+    "threshold": 0.006948893424123526,
+    "normal_mean_error": 0.001761291641741991,
+    "anomaly_mean_error": 0.1006765142083168,
+    "true_positives": 1000.0,
+    "false_positives": 10.0,
+    "true_negatives": 990.0,
+    "false_negatives": 0.0,
+    "precision": 0.9900990099009901,
+    "recall": 1.0,
+    "f1": 0.9950248756218906,
+    "false_positive_rate": 0.01
+  },
+  "last_epoch": {
+    "epoch": 120.0,
+    "training_loss": 0.0017386162728071212,
+    "validation_loss": 0.001761291641741991
+  }
+}

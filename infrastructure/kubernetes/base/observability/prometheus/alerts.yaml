@@ -10,6 +10,44 @@ groups:
         annotations:
           summary: "High-risk autonomous-agent activity detected"
           description: "AgentShield observed one or more high-risk actions during the last 5 minutes."
+      - alert: AgentShieldMLBehaviorAnomalyDetected
+        expr: increase(agentshield_detection_ml_anomalies_total[5m]) > 0
+        for: 30s
+        labels:
+          severity: critical
+          service: detection
+        annotations:
+          summary: "PyTorch agent behavior anomaly detected"
+          description: "AgentShield's neural behavioral autoencoder detected autonomous-agent activity outside the learned normal behavior distribution."
+
+      - alert: AgentShieldMLInferenceFailures
+        expr: increase(agentshield_detection_ml_failures_total[5m]) > 0
+        for: 30s
+        labels:
+          severity: warning
+          service: detection
+        annotations:
+          summary: "AgentShield ML inference failures detected"
+          description: "The Detection service encountered one or more failures while requesting neural anomaly inference."
+
+      - alert: AgentShieldMLAnomalyRateHigh
+        expr: |
+          (
+            increase(agentshield_detection_ml_anomalies_total[5m])
+            /
+            clamp_min(
+              increase(agentshield_detection_ml_predictions_total[5m]),
+              1
+            )
+          ) > 0.50
+        for: 2m
+        labels:
+          severity: warning
+          service: detection
+        annotations:
+          summary: "AgentShield neural anomaly rate is elevated"
+          description: "More than 50 percent of recent PyTorch behavioral predictions were classified as anomalous."
+
 
       - alert: AgentShieldDeniedActionSpike
         expr: increase(agentshield_gateway_deny_total[5m]) >= 5

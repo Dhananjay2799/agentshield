@@ -9,6 +9,9 @@ resources:
   - redpanda/redpanda.yaml
   - opa/opa.yaml
 
+  - ml-anomaly/ml-anomaly.yaml
+  - networking/ml-anomaly-access.yaml
+
   - observability/prometheus/prometheus.yaml
   - observability/grafana/grafana.yaml
   - observability/alertmanager/alertmanager.yaml

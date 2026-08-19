@@ -19,6 +19,7 @@ import (
 	"github.com/dhananjay2799/agentshield/services/detection/internal/dlq"
 	"github.com/dhananjay2799/agentshield/services/detection/internal/features"
 	detectionmetrics "github.com/dhananjay2799/agentshield/services/detection/internal/metrics"
+	"github.com/dhananjay2799/agentshield/services/detection/internal/mlclient"
 	"github.com/dhananjay2799/agentshield/services/detection/internal/repository"
 )
 
@@ -37,22 +38,26 @@ type SecurityEvent struct {
 type Detector struct {
 	IncidentRepository        *repository.IncidentRepository
 	BehaviorProfileRepository *repository.BehaviorProfileRepository
+	MLClient                  *mlclient.Client
 	Metrics                   *detectionmetrics.Metrics
 	BehaviorTracker           *behavior.Tracker
 	BehaviorEngine            *behavior.Engine
 	FeatureExtractor          *features.Extractor
 	BaselineStore             *baseline.Store
 	BaselineMinSamples        int64
+	MLMinWindowEvents         int
 }
 
 func NewDetector(
 	incidentRepository *repository.IncidentRepository,
 	behaviorProfileRepository *repository.BehaviorProfileRepository,
+	mlClient *mlclient.Client,
 	metrics *detectionmetrics.Metrics,
 ) *Detector {
 	return &Detector{
 		IncidentRepository:        incidentRepository,
 		BehaviorProfileRepository: behaviorProfileRepository,
+		MLClient:                  mlClient,
 		Metrics:                   metrics,
 
 		BehaviorTracker: behavior.NewTracker(
@@ -66,6 +71,8 @@ func NewDetector(
 		BaselineStore: baseline.NewStore(),
 
 		BaselineMinSamples: 5,
+
+		MLMinWindowEvents: 3,
 	}
 }
 
@@ -392,6 +399,107 @@ func (d *Detector) Process(
 
 	isAnomalous := false
 
+	if d.MLClient != nil &&
+		vector.EventCount >= d.MLMinWindowEvents {
+
+		d.Metrics.RecordMLPrediction()
+
+		mlPrediction, mlErr :=
+			d.MLClient.Predict(
+				context.Background(),
+				mlclient.PredictionRequest{
+					EventCount:             float64(vector.EventCount),
+					DenyRatio:              vector.DenyRatio,
+					HighRiskRatio:          vector.HighRiskRatio,
+					ActionDiversityRatio:   vector.ActionDiversityRatio,
+					ResourceDiversityRatio: vector.ResourceDiversityRatio,
+					AverageRiskScore:       vector.AverageRiskScore,
+					ProductionAccessRatio:  vector.ProductionAccessRatio,
+					SensitiveActionRatio:   vector.SensitiveActionRatio,
+				},
+			)
+
+		if mlErr != nil {
+			d.Metrics.RecordMLFailure()
+
+			log.Printf(
+				"ML ANOMALY INFERENCE FAILED: agent=%s error=%v",
+				event.AgentID,
+				mlErr,
+			)
+		} else {
+			log.Printf(
+				"ML ANOMALY SCORE: agent=%s error=%.4f threshold=%.4f score_ratio=%.4f anomaly=%t model=%s",
+				event.AgentID,
+				mlPrediction.ReconstructionError,
+				mlPrediction.Threshold,
+				mlPrediction.ScoreRatio,
+				mlPrediction.IsAnomaly,
+				mlPrediction.Model,
+			)
+
+			if mlPrediction.IsAnomaly {
+				d.Metrics.RecordMLAnomaly()
+
+				isAnomalous = true
+
+				metadata := map[string]any{
+					"ml_anomaly_detection":     true,
+					"ml_model":                 mlPrediction.Model,
+					"ml_reconstruction_error":  mlPrediction.ReconstructionError,
+					"ml_threshold":             mlPrediction.Threshold,
+					"ml_score_ratio":           mlPrediction.ScoreRatio,
+					"event_count":              vector.EventCount,
+					"deny_ratio":               vector.DenyRatio,
+					"high_risk_ratio":          vector.HighRiskRatio,
+					"action_diversity_ratio":   vector.ActionDiversityRatio,
+					"resource_diversity_ratio": vector.ResourceDiversityRatio,
+					"average_risk_score":       vector.AverageRiskScore,
+					"production_access_ratio":  vector.ProductionAccessRatio,
+					"sensitive_action_ratio":   vector.SensitiveActionRatio,
+				}
+
+				err := d.IncidentRepository.UpsertOpenIncident(
+					context.Background(),
+					repository.UpsertIncidentParams{
+						AgentID:      event.AgentID,
+						SessionID:    event.SessionID,
+						IncidentType: "ml_behavior_anomaly",
+						Severity:     "high",
+						Title:        "Neural behavior anomaly detected",
+						Description:  "AgentShield's PyTorch behavioral autoencoder detected activity outside the learned normal behavior distribution.",
+						Metadata:     metadata,
+					},
+				)
+
+				if err != nil {
+					log.Printf(
+						"failed to persist ML behavior anomaly incident: %v",
+						err,
+					)
+				} else {
+					log.Printf(
+						"ML ANOMALY DETECTED: agent=%s model=%s score_ratio=%.4f",
+						event.AgentID,
+						mlPrediction.Model,
+						mlPrediction.ScoreRatio,
+					)
+
+					d.Metrics.RecordIncident()
+				}
+			}
+		}
+	} else if d.MLClient != nil {
+		d.Metrics.RecordMLSkippedInsufficientWindow()
+
+		log.Printf(
+			"ML ANOMALY SKIPPED: agent=%s events=%d minimum_events=%d reason=insufficient_window",
+			event.AgentID,
+			vector.EventCount,
+			d.MLMinWindowEvents,
+		)
+	}
+
 	profile, exists :=
 		d.BaselineStore.Get(
 			event.AgentID,
@@ -659,6 +767,16 @@ func main() {
 			"postgres://agentshield:agentshield_dev_password@localhost:5432/agentshield"
 	}
 
+	mlAnomalyURL :=
+		os.Getenv(
+			"ML_ANOMALY_URL",
+		)
+
+	if mlAnomalyURL == "" {
+		mlAnomalyURL =
+			"http://localhost:18085"
+	}
+
 	db, err :=
 		database.Connect(
 			ctx,
@@ -693,10 +811,17 @@ func main() {
 			db,
 		)
 
+	mlClient :=
+		mlclient.New(
+			mlAnomalyURL,
+			2*time.Second,
+		)
+
 	detector :=
 		NewDetector(
 			incidentRepository,
 			behaviorProfileRepository,
+			mlClient,
 			metrics,
 		)
 

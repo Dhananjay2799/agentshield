@@ -30,6 +30,10 @@ type Snapshot struct {
 	AnomalyDetections           int64      `json:"anomaly_detections"`
 	BaselineWarmups             int64      `json:"baseline_warmups"`
 	BaselineUpdatesSkipped      int64      `json:"baseline_updates_skipped"`
+	MLPredictions               int64      `json:"ml_predictions"`
+	MLAnomalies                 int64      `json:"ml_anomalies"`
+	MLFailures                  int64      `json:"ml_failures"`
+	MLSkippedInsufficientWindow int64      `json:"ml_skipped_insufficient_window"`
 	LastProcessedAt             *time.Time `json:"last_processed_at,omitempty"`
 }
 
@@ -58,6 +62,10 @@ type Metrics struct {
 	anomalyDetections           int64
 	baselineWarmups             int64
 	baselineUpdatesSkipped      int64
+	mlPredictions               int64
+	mlAnomalies                 int64
+	mlFailures                  int64
+	mlSkippedInsufficientWindow int64
 	lastProcessedAt             *time.Time
 }
 
@@ -67,6 +75,34 @@ func New(topic string) *Metrics {
 		lastOffset:    -1,
 		lastPartition: -1,
 	}
+}
+
+func (m *Metrics) RecordMLPrediction() {
+	m.mu.Lock()
+	defer m.mu.Unlock()
+
+	m.mlPredictions++
+}
+
+func (m *Metrics) RecordMLAnomaly() {
+	m.mu.Lock()
+	defer m.mu.Unlock()
+
+	m.mlAnomalies++
+}
+
+func (m *Metrics) RecordMLFailure() {
+	m.mu.Lock()
+	defer m.mu.Unlock()
+
+	m.mlFailures++
+}
+
+func (m *Metrics) RecordMLSkippedInsufficientWindow() {
+	m.mu.Lock()
+	defer m.mu.Unlock()
+
+	m.mlSkippedInsufficientWindow++
 }
 
 func (m *Metrics) RecordDLQPublished() {
@@ -227,6 +263,10 @@ func (m *Metrics) Snapshot() Snapshot {
 		AnomalyDetections:           m.anomalyDetections,
 		BaselineWarmups:             m.baselineWarmups,
 		BaselineUpdatesSkipped:      m.baselineUpdatesSkipped,
+		MLPredictions:               m.mlPredictions,
+		MLAnomalies:                 m.mlAnomalies,
+		MLFailures:                  m.mlFailures,
+		MLSkippedInsufficientWindow: m.mlSkippedInsufficientWindow,
 		LastProcessedAt:             lastProcessedAt,
 	}
 }
@@ -365,6 +405,30 @@ func (m *Metrics) WritePrometheus(w io.Writer) error {
 			"agentshield_detection_baseline_updates_skipped_total",
 			"counter",
 			snapshot.BaselineUpdatesSkipped,
+		},
+		{
+			"Total number of PyTorch ML anomaly predictions requested by the detection service.",
+			"agentshield_detection_ml_predictions_total",
+			"counter",
+			snapshot.MLPredictions,
+		},
+		{
+			"Total number of PyTorch ML predictions classified as anomalous.",
+			"agentshield_detection_ml_anomalies_total",
+			"counter",
+			snapshot.MLAnomalies,
+		},
+		{
+			"Total number of PyTorch ML inference failures observed by the detection service.",
+			"agentshield_detection_ml_failures_total",
+			"counter",
+			snapshot.MLFailures,
+		},
+		{
+			"Total number of PyTorch ML inference attempts skipped because the behavioral window contained too few events.",
+			"agentshield_detection_ml_skipped_insufficient_window_total",
+			"counter",
+			snapshot.MLSkippedInsufficientWindow,
 		},
 	}
 
