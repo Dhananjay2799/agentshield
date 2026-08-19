@@ -30,6 +30,7 @@ configMapGenerator:
     files:
       - 001_initial_schema.sql=postgres/migrations/001_initial_schema.sql
       - 002_incident_lifecycle.sql=postgres/migrations/002_incident_lifecycle.sql
+      - 003_agent_behavior_profiles.sql=postgres/migrations/003_agent_behavior_profiles.sql
 
   - name: prometheus-alert-rules
     namespace: agentshield

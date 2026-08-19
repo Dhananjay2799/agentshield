@@ -304,3 +304,51 @@ func TestScoreObservationNormalBehavior(
 		)
 	}
 }
+
+func TestStoreRestoresProfile(
+	t *testing.T,
+) {
+	store := NewStore()
+
+	store.Restore(
+		Profile{
+			AgentID:     "agent-restored",
+			SampleCount: 12,
+			Mean: Observation{
+				EventCount:             6,
+				DenyRatio:              0.20,
+				HighRiskRatio:          0.10,
+				ActionDiversityRatio:   0.40,
+				ResourceDiversityRatio: 0.30,
+				AverageRiskScore:       25,
+				ProductionAccessRatio:  0.15,
+				SensitiveActionRatio:   0.05,
+			},
+		},
+	)
+
+	profile, ok :=
+		store.Get(
+			"agent-restored",
+		)
+
+	if !ok {
+		t.Fatal(
+			"expected restored profile",
+		)
+	}
+
+	if profile.SampleCount != 12 {
+		t.Fatalf(
+			"expected 12 samples, got %d",
+			profile.SampleCount,
+		)
+	}
+
+	if profile.Mean.AverageRiskScore != 25 {
+		t.Fatalf(
+			"expected mean risk 25, got %.2f",
+			profile.Mean.AverageRiskScore,
+		)
+	}
+}

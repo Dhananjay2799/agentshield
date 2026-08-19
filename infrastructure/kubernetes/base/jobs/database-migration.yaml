@@ -67,7 +67,8 @@ spec:
                 -d "${PGDATABASE}" \
                 -v ON_ERROR_STOP=1 \
                 -f /migrations/001_initial_schema.sql \
-                -f /migrations/002_incident_lifecycle.sql
+                -f /migrations/002_incident_lifecycle.sql \
+                -f /migrations/003_agent_behavior_profiles.sql
 
               echo "AgentShield database migrations completed."
 

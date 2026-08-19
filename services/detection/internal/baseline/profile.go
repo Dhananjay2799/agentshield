@@ -120,6 +120,18 @@ func (s *Store) Get(
 	return *profile, true
 }
 
+func (s *Store) Restore(
+	profile Profile,
+) {
+	s.mu.Lock()
+	defer s.mu.Unlock()
+
+	copyProfile := profile
+
+	s.profiles[profile.AgentID] =
+		&copyProfile
+}
+
 func Compare(
 	profile Profile,
 	observation Observation,

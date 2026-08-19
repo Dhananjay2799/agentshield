@@ -35,22 +35,25 @@ type SecurityEvent struct {
 }
 
 type Detector struct {
-	IncidentRepository *repository.IncidentRepository
-	Metrics            *detectionmetrics.Metrics
-	BehaviorTracker    *behavior.Tracker
-	BehaviorEngine     *behavior.Engine
-	FeatureExtractor   *features.Extractor
-	BaselineStore      *baseline.Store
-	BaselineMinSamples int64
+	IncidentRepository        *repository.IncidentRepository
+	BehaviorProfileRepository *repository.BehaviorProfileRepository
+	Metrics                   *detectionmetrics.Metrics
+	BehaviorTracker           *behavior.Tracker
+	BehaviorEngine            *behavior.Engine
+	FeatureExtractor          *features.Extractor
+	BaselineStore             *baseline.Store
+	BaselineMinSamples        int64
 }
 
 func NewDetector(
 	incidentRepository *repository.IncidentRepository,
+	behaviorProfileRepository *repository.BehaviorProfileRepository,
 	metrics *detectionmetrics.Metrics,
 ) *Detector {
 	return &Detector{
-		IncidentRepository: incidentRepository,
-		Metrics:            metrics,
+		IncidentRepository:        incidentRepository,
+		BehaviorProfileRepository: behaviorProfileRepository,
+		Metrics:                   metrics,
 
 		BehaviorTracker: behavior.NewTracker(
 			60 * time.Second,
@@ -394,6 +397,52 @@ func (d *Detector) Process(
 			event.AgentID,
 		)
 
+	profileLoadFailed := false
+
+	if !exists {
+		persistedProfile, err :=
+			d.BehaviorProfileRepository.Get(
+				context.Background(),
+				event.AgentID,
+			)
+
+		switch {
+		case err == nil:
+			d.BaselineStore.Restore(
+				*persistedProfile,
+			)
+
+			profile =
+				*persistedProfile
+
+			exists = true
+
+			log.Printf(
+				"AGENT BASELINE RESTORED: agent=%s samples=%d mean_events=%.2f mean_risk=%.2f",
+				event.AgentID,
+				profile.SampleCount,
+				profile.Mean.EventCount,
+				profile.Mean.AverageRiskScore,
+			)
+
+		case errors.Is(
+			err,
+			repository.ErrBehaviorProfileNotFound,
+		):
+			// No persisted profile exists yet.
+			// The first normal observation will create it.
+
+		default:
+			profileLoadFailed = true
+
+			log.Printf(
+				"failed to load persisted behavior profile agent=%s: %v",
+				event.AgentID,
+				err,
+			)
+		}
+	}
+
 	if exists {
 		d.Metrics.RecordAnomalyEvaluation()
 
@@ -489,6 +538,13 @@ func (d *Detector) Process(
 			"BASELINE UPDATE SKIPPED: agent=%s reason=anomalous_observation",
 			event.AgentID,
 		)
+	} else if profileLoadFailed {
+		d.Metrics.RecordBaselineUpdateSkipped()
+
+		log.Printf(
+			"BASELINE UPDATE SKIPPED: agent=%s reason=persisted_profile_load_failed",
+			event.AgentID,
+		)
 	} else {
 		updatedProfile :=
 			d.BaselineStore.Observe(
@@ -496,8 +552,31 @@ func (d *Detector) Process(
 				observation,
 			)
 
-		if updatedProfile.SampleCount == d.BaselineMinSamples {
+		if updatedProfile.SampleCount ==
+			d.BaselineMinSamples {
+
 			d.Metrics.RecordBaselineWarmup()
+		}
+
+		err :=
+			d.BehaviorProfileRepository.Upsert(
+				context.Background(),
+				updatedProfile,
+			)
+
+		if err != nil {
+			log.Printf(
+				"failed to persist behavior profile agent=%s samples=%d: %v",
+				event.AgentID,
+				updatedProfile.SampleCount,
+				err,
+			)
+		} else {
+			log.Printf(
+				"AGENT BASELINE PERSISTED: agent=%s samples=%d",
+				event.AgentID,
+				updatedProfile.SampleCount,
+			)
 		}
 
 		log.Printf(
@@ -609,9 +688,15 @@ func main() {
 			db,
 		)
 
+	behaviorProfileRepository :=
+		repository.NewBehaviorProfileRepository(
+			db,
+		)
+
 	detector :=
 		NewDetector(
 			incidentRepository,
+			behaviorProfileRepository,
 			metrics,
 		)
 
