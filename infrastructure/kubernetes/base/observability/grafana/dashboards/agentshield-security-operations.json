@@ -1356,6 +1356,458 @@
                                    ],
                        "title":  "SOC Incident Lifecycle",
                        "type":  "timeseries"
+                   },
+                   {
+                       "datasource":  {
+                                          "type":  "prometheus",
+                                          "uid":  "prometheus"
+                                      },
+                       "fieldConfig":  {
+                                           "defaults":  {
+                                                            "thresholds":  {
+                                                                               "steps":  [
+                                                                                             {
+                                                                                                 "value":  null,
+                                                                                                 "color":  "green"
+                                                                                             },
+                                                                                             {
+                                                                                                 "value":  1,
+                                                                                                 "color":  "red"
+                                                                                             }
+                                                                                         ],
+                                                                               "mode":  "absolute"
+                                                                           },
+                                                            "mappings":  [
+
+                                                                         ]
+                                                        },
+                                           "overrides":  [
+
+                                                         ]
+                                       },
+                       "gridPos":  {
+                                       "y":  36,
+                                       "w":  8,
+                                       "x":  0,
+                                       "h":  4
+                                   },
+                       "id":  22,
+                       "options":  {
+                                       "textMode":  "auto",
+                                       "wideLayout":  true,
+                                       "graphMode":  "area",
+                                       "reduceOptions":  {
+                                                             "values":  false,
+                                                             "calcs":  [
+                                                                           "lastNotNull"
+                                                                       ],
+                                                             "fields":  ""
+                                                         },
+                                       "justifyMode":  "auto",
+                                       "orientation":  "auto",
+                                       "colorMode":  "value"
+                                   },
+                       "pluginVersion":  "11.0.0",
+                       "targets":  [
+                                       {
+                                           "refId":  "A",
+                                           "expr":  "agentshield_detection_behavioral_detections_total"
+                                       }
+                                   ],
+                       "title":  "Behavioral Detections",
+                       "type":  "stat"
+                   },
+                   {
+                       "datasource":  {
+                                          "type":  "prometheus",
+                                          "uid":  "prometheus"
+                                      },
+                       "fieldConfig":  {
+                                           "defaults":  {
+                                                            "thresholds":  {
+                                                                               "steps":  [
+                                                                                             {
+                                                                                                 "value":  null,
+                                                                                                 "color":  "green"
+                                                                                             },
+                                                                                             {
+                                                                                                 "value":  1,
+                                                                                                 "color":  "red"
+                                                                                             }
+                                                                                         ],
+                                                                               "mode":  "absolute"
+                                                                           },
+                                                            "mappings":  [
+
+                                                                         ]
+                                                        },
+                                           "overrides":  [
+
+                                                         ]
+                                       },
+                       "gridPos":  {
+                                       "y":  36,
+                                       "w":  8,
+                                       "x":  8,
+                                       "h":  4
+                                   },
+                       "id":  23,
+                       "options":  {
+                                       "textMode":  "auto",
+                                       "wideLayout":  true,
+                                       "graphMode":  "area",
+                                       "reduceOptions":  {
+                                                             "values":  false,
+                                                             "calcs":  [
+                                                                           "lastNotNull"
+                                                                       ],
+                                                             "fields":  ""
+                                                         },
+                                       "justifyMode":  "auto",
+                                       "orientation":  "auto",
+                                       "colorMode":  "value"
+                                   },
+                       "pluginVersion":  "11.0.0",
+                       "targets":  [
+                                       {
+                                           "refId":  "A",
+                                           "expr":  "agentshield_detection_repeated_denied_total"
+                                       }
+                                   ],
+                       "title":  "Repeated Denials",
+                       "type":  "stat"
+                   },
+                   {
+                       "datasource":  {
+                                          "type":  "prometheus",
+                                          "uid":  "prometheus"
+                                      },
+                       "fieldConfig":  {
+                                           "defaults":  {
+                                                            "thresholds":  {
+                                                                               "steps":  [
+                                                                                             {
+                                                                                                 "value":  null,
+                                                                                                 "color":  "green"
+                                                                                             },
+                                                                                             {
+                                                                                                 "value":  1,
+                                                                                                 "color":  "red"
+                                                                                             }
+                                                                                         ],
+                                                                               "mode":  "absolute"
+                                                                           },
+                                                            "mappings":  [
+
+                                                                         ]
+                                                        },
+                                           "overrides":  [
+
+                                                         ]
+                                       },
+                       "gridPos":  {
+                                       "y":  36,
+                                       "w":  8,
+                                       "x":  16,
+                                       "h":  4
+                                   },
+                       "id":  24,
+                       "options":  {
+                                       "textMode":  "auto",
+                                       "wideLayout":  true,
+                                       "graphMode":  "area",
+                                       "reduceOptions":  {
+                                                             "values":  false,
+                                                             "calcs":  [
+                                                                           "lastNotNull"
+                                                                       ],
+                                                             "fields":  ""
+                                                         },
+                                       "justifyMode":  "auto",
+                                       "orientation":  "auto",
+                                       "colorMode":  "value"
+                                   },
+                       "pluginVersion":  "11.0.0",
+                       "targets":  [
+                                       {
+                                           "refId":  "A",
+                                           "expr":  "agentshield_detection_repeated_high_risk_total"
+                                       }
+                                   ],
+                       "title":  "Repeated High Risk",
+                       "type":  "stat"
+                   },
+                   {
+                       "datasource":  {
+                                          "type":  "prometheus",
+                                          "uid":  "prometheus"
+                                      },
+                       "fieldConfig":  {
+                                           "defaults":  {
+                                                            "thresholds":  {
+                                                                               "steps":  [
+                                                                                             {
+                                                                                                 "value":  null,
+                                                                                                 "color":  "green"
+                                                                                             },
+                                                                                             {
+                                                                                                 "value":  1,
+                                                                                                 "color":  "red"
+                                                                                             }
+                                                                                         ],
+                                                                               "mode":  "absolute"
+                                                                           },
+                                                            "mappings":  [
+
+                                                                         ]
+                                                        },
+                                           "overrides":  [
+
+                                                         ]
+                                       },
+                       "gridPos":  {
+                                       "y":  40,
+                                       "w":  8,
+                                       "x":  0,
+                                       "h":  4
+                                   },
+                       "id":  25,
+                       "options":  {
+                                       "textMode":  "auto",
+                                       "wideLayout":  true,
+                                       "graphMode":  "area",
+                                       "reduceOptions":  {
+                                                             "values":  false,
+                                                             "calcs":  [
+                                                                           "lastNotNull"
+                                                                       ],
+                                                             "fields":  ""
+                                                         },
+                                       "justifyMode":  "auto",
+                                       "orientation":  "auto",
+                                       "colorMode":  "value"
+                                   },
+                       "pluginVersion":  "11.0.0",
+                       "targets":  [
+                                       {
+                                           "refId":  "A",
+                                           "expr":  "agentshield_detection_action_bursts_total"
+                                       }
+                                   ],
+                       "title":  "Action Bursts",
+                       "type":  "stat"
+                   },
+                   {
+                       "datasource":  {
+                                          "type":  "prometheus",
+                                          "uid":  "prometheus"
+                                      },
+                       "fieldConfig":  {
+                                           "defaults":  {
+                                                            "thresholds":  {
+                                                                               "steps":  [
+                                                                                             {
+                                                                                                 "value":  null,
+                                                                                                 "color":  "green"
+                                                                                             },
+                                                                                             {
+                                                                                                 "value":  1,
+                                                                                                 "color":  "red"
+                                                                                             }
+                                                                                         ],
+                                                                               "mode":  "absolute"
+                                                                           },
+                                                            "mappings":  [
+
+                                                                         ]
+                                                        },
+                                           "overrides":  [
+
+                                                         ]
+                                       },
+                       "gridPos":  {
+                                       "y":  40,
+                                       "w":  8,
+                                       "x":  8,
+                                       "h":  4
+                                   },
+                       "id":  26,
+                       "options":  {
+                                       "textMode":  "auto",
+                                       "wideLayout":  true,
+                                       "graphMode":  "area",
+                                       "reduceOptions":  {
+                                                             "values":  false,
+                                                             "calcs":  [
+                                                                           "lastNotNull"
+                                                                       ],
+                                                             "fields":  ""
+                                                         },
+                                       "justifyMode":  "auto",
+                                       "orientation":  "auto",
+                                       "colorMode":  "value"
+                                   },
+                       "pluginVersion":  "11.0.0",
+                       "targets":  [
+                                       {
+                                           "refId":  "A",
+                                           "expr":  "agentshield_detection_action_diversity_total"
+                                       }
+                                   ],
+                       "title":  "Action Diversity",
+                       "type":  "stat"
+                   },
+                   {
+                       "datasource":  {
+                                          "type":  "prometheus",
+                                          "uid":  "prometheus"
+                                      },
+                       "fieldConfig":  {
+                                           "defaults":  {
+                                                            "thresholds":  {
+                                                                               "steps":  [
+                                                                                             {
+                                                                                                 "value":  null,
+                                                                                                 "color":  "green"
+                                                                                             },
+                                                                                             {
+                                                                                                 "value":  1,
+                                                                                                 "color":  "red"
+                                                                                             }
+                                                                                         ],
+                                                                               "mode":  "absolute"
+                                                                           },
+                                                            "mappings":  [
+
+                                                                         ]
+                                                        },
+                                           "overrides":  [
+
+                                                         ]
+                                       },
+                       "gridPos":  {
+                                       "y":  40,
+                                       "w":  8,
+                                       "x":  16,
+                                       "h":  4
+                                   },
+                       "id":  27,
+                       "options":  {
+                                       "textMode":  "auto",
+                                       "wideLayout":  true,
+                                       "graphMode":  "area",
+                                       "reduceOptions":  {
+                                                             "values":  false,
+                                                             "calcs":  [
+                                                                           "lastNotNull"
+                                                                       ],
+                                                             "fields":  ""
+                                                         },
+                                       "justifyMode":  "auto",
+                                       "orientation":  "auto",
+                                       "colorMode":  "value"
+                                   },
+                       "pluginVersion":  "11.0.0",
+                       "targets":  [
+                                       {
+                                           "refId":  "A",
+                                           "expr":  "agentshield_detection_resource_diversity_total"
+                                       }
+                                   ],
+                       "title":  "Resource Diversity",
+                       "type":  "stat"
+                   },
+                   {
+                       "datasource":  {
+                                          "type":  "prometheus",
+                                          "uid":  "prometheus"
+                                      },
+                       "fieldConfig":  {
+                                           "defaults":  {
+                                                            "custom":  {
+                                                                           "axisColorMode":  "text",
+                                                                           "lineInterpolation":  "linear",
+                                                                           "spanNulls":  false,
+                                                                           "axisCenteredZero":  false,
+                                                                           "gradientMode":  "none",
+                                                                           "pointSize":  5,
+                                                                           "fillOpacity":  10,
+                                                                           "axisLabel":  "Detections / 5m",
+                                                                           "lineWidth":  1,
+                                                                           "hideFrom":  {
+                                                                                            "tooltip":  false,
+                                                                                            "viz":  false,
+                                                                                            "legend":  false
+                                                                                        },
+                                                                           "drawStyle":  "line",
+                                                                           "scaleDistribution":  {
+                                                                                                     "type":  "linear"
+                                                                                                 },
+                                                                           "showPoints":  "auto",
+                                                                           "axisPlacement":  "auto",
+                                                                           "thresholdsStyle":  {
+                                                                                                   "mode":  "off"
+                                                                                               },
+                                                                           "stacking":  {
+                                                                                            "mode":  "none",
+                                                                                            "group":  "A"
+                                                                                        }
+                                                                       }
+                                                        },
+                                           "overrides":  [
+
+                                                         ]
+                                       },
+                       "gridPos":  {
+                                       "y":  44,
+                                       "w":  24,
+                                       "x":  0,
+                                       "h":  8
+                                   },
+                       "id":  28,
+                       "options":  {
+                                       "legend":  {
+                                                      "placement":  "bottom",
+                                                      "showLegend":  true,
+                                                      "calcs":  [
+                                                                    "lastNotNull"
+                                                                ],
+                                                      "displayMode":  "table"
+                                                  },
+                                       "tooltip":  {
+                                                       "sort":  "desc",
+                                                       "mode":  "multi"
+                                                   }
+                                   },
+                       "targets":  [
+                                       {
+                                           "legendFormat":  "Repeated Denials",
+                                           "expr":  "increase(agentshield_detection_repeated_denied_total[5m])",
+                                           "refId":  "A"
+                                       },
+                                       {
+                                           "legendFormat":  "Repeated High Risk",
+                                           "expr":  "increase(agentshield_detection_repeated_high_risk_total[5m])",
+                                           "refId":  "B"
+                                       },
+                                       {
+                                           "legendFormat":  "Action Bursts",
+                                           "expr":  "increase(agentshield_detection_action_bursts_total[5m])",
+                                           "refId":  "C"
+                                       },
+                                       {
+                                           "legendFormat":  "Action Diversity",
+                                           "expr":  "increase(agentshield_detection_action_diversity_total[5m])",
+                                           "refId":  "D"
+                                       },
+                                       {
+                                           "legendFormat":  "Resource Diversity",
+                                           "expr":  "increase(agentshield_detection_resource_diversity_total[5m])",
+                                           "refId":  "E"
+                                       }
+                                   ],
+                       "title":  "Behavioral Detection Activity",
+                       "type":  "timeseries"
                    }
                ],
     "refresh":  "10s",
@@ -1381,6 +1833,6 @@
     "timezone":  "browser",
     "title":  "AgentShield Security Operations",
     "uid":  "agentshield-security-operations",
-    "version":  2,
+    "version":  3,
     "weekStart":  ""
 }

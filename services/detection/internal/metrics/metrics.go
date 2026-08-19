@@ -8,37 +8,49 @@ import (
 )
 
 type Snapshot struct {
-	Topic              string     `json:"topic"`
-	ProcessedEvents    int64      `json:"processed_events"`
-	DeniedEvents       int64      `json:"denied_events"`
-	HighRiskEvents     int64      `json:"high_risk_events"`
-	IncidentsTriggered int64      `json:"incidents_triggered"`
-	RejectedEvents     int64      `json:"rejected_events"`
-	FetchErrors        int64      `json:"fetch_errors"`
-	CommitFailures     int64      `json:"commit_failures"`
-	LastOffset         int64      `json:"last_offset"`
-	LastPartition      int32      `json:"last_partition"`
-	DLQPublished       int64      `json:"dlq_published"`
-	DLQFailures        int64      `json:"dlq_failures"`
-	LastProcessedAt    *time.Time `json:"last_processed_at,omitempty"`
+	Topic                       string     `json:"topic"`
+	ProcessedEvents             int64      `json:"processed_events"`
+	DeniedEvents                int64      `json:"denied_events"`
+	HighRiskEvents              int64      `json:"high_risk_events"`
+	IncidentsTriggered          int64      `json:"incidents_triggered"`
+	BehavioralDetections        int64      `json:"behavioral_detections"`
+	RepeatedDeniedDetections    int64      `json:"repeated_denied_detections"`
+	RepeatedHighRiskDetections  int64      `json:"repeated_high_risk_detections"`
+	ActionBurstDetections       int64      `json:"action_burst_detections"`
+	ActionDiversityDetections   int64      `json:"action_diversity_detections"`
+	ResourceDiversityDetections int64      `json:"resource_diversity_detections"`
+	RejectedEvents              int64      `json:"rejected_events"`
+	FetchErrors                 int64      `json:"fetch_errors"`
+	CommitFailures              int64      `json:"commit_failures"`
+	LastOffset                  int64      `json:"last_offset"`
+	LastPartition               int32      `json:"last_partition"`
+	DLQPublished                int64      `json:"dlq_published"`
+	DLQFailures                 int64      `json:"dlq_failures"`
+	LastProcessedAt             *time.Time `json:"last_processed_at,omitempty"`
 }
 
 type Metrics struct {
 	mu sync.RWMutex
 
-	topic              string
-	processedEvents    int64
-	deniedEvents       int64
-	highRiskEvents     int64
-	incidentsTriggered int64
-	rejectedEvents     int64
-	fetchErrors        int64
-	commitFailures     int64
-	lastOffset         int64
-	lastPartition      int32
-	dlqPublished       int64
-	dlqFailures        int64
-	lastProcessedAt    *time.Time
+	topic                       string
+	processedEvents             int64
+	deniedEvents                int64
+	highRiskEvents              int64
+	incidentsTriggered          int64
+	behavioralDetections        int64
+	repeatedDeniedDetections    int64
+	repeatedHighRiskDetections  int64
+	actionBurstDetections       int64
+	actionDiversityDetections   int64
+	resourceDiversityDetections int64
+	rejectedEvents              int64
+	fetchErrors                 int64
+	commitFailures              int64
+	lastOffset                  int64
+	lastPartition               int32
+	dlqPublished                int64
+	dlqFailures                 int64
+	lastProcessedAt             *time.Time
 }
 
 func New(topic string) *Metrics {
@@ -99,6 +111,32 @@ func (m *Metrics) RecordIncident() {
 	m.incidentsTriggered++
 }
 
+func (m *Metrics) RecordBehavioralDetection(
+	detectionType string,
+) {
+	m.mu.Lock()
+	defer m.mu.Unlock()
+
+	m.behavioralDetections++
+
+	switch detectionType {
+	case "repeated_denied_actions":
+		m.repeatedDeniedDetections++
+
+	case "repeated_high_risk_behavior":
+		m.repeatedHighRiskDetections++
+
+	case "agent_action_burst":
+		m.actionBurstDetections++
+
+	case "high_action_diversity":
+		m.actionDiversityDetections++
+
+	case "high_resource_diversity":
+		m.resourceDiversityDetections++
+	}
+}
+
 func (m *Metrics) RecordRejected() {
 	m.mu.Lock()
 	defer m.mu.Unlock()
@@ -131,19 +169,25 @@ func (m *Metrics) Snapshot() Snapshot {
 	}
 
 	return Snapshot{
-		Topic:              m.topic,
-		ProcessedEvents:    m.processedEvents,
-		DeniedEvents:       m.deniedEvents,
-		HighRiskEvents:     m.highRiskEvents,
-		IncidentsTriggered: m.incidentsTriggered,
-		RejectedEvents:     m.rejectedEvents,
-		FetchErrors:        m.fetchErrors,
-		CommitFailures:     m.commitFailures,
-		DLQPublished:       m.dlqPublished,
-		DLQFailures:        m.dlqFailures,
-		LastOffset:         m.lastOffset,
-		LastPartition:      m.lastPartition,
-		LastProcessedAt:    lastProcessedAt,
+		Topic:                       m.topic,
+		ProcessedEvents:             m.processedEvents,
+		DeniedEvents:                m.deniedEvents,
+		HighRiskEvents:              m.highRiskEvents,
+		IncidentsTriggered:          m.incidentsTriggered,
+		BehavioralDetections:        m.behavioralDetections,
+		RepeatedDeniedDetections:    m.repeatedDeniedDetections,
+		RepeatedHighRiskDetections:  m.repeatedHighRiskDetections,
+		ActionBurstDetections:       m.actionBurstDetections,
+		ActionDiversityDetections:   m.actionDiversityDetections,
+		ResourceDiversityDetections: m.resourceDiversityDetections,
+		RejectedEvents:              m.rejectedEvents,
+		FetchErrors:                 m.fetchErrors,
+		CommitFailures:              m.commitFailures,
+		DLQPublished:                m.dlqPublished,
+		DLQFailures:                 m.dlqFailures,
+		LastOffset:                  m.lastOffset,
+		LastPartition:               m.lastPartition,
+		LastProcessedAt:             lastProcessedAt,
 	}
 }
 
@@ -179,6 +223,42 @@ func (m *Metrics) WritePrometheus(w io.Writer) error {
 			"agentshield_detection_incidents_triggered_total",
 			"counter",
 			snapshot.IncidentsTriggered,
+		},
+		{
+			"Total number of behavioral detections generated by the detection service.",
+			"agentshield_detection_behavioral_detections_total",
+			"counter",
+			snapshot.BehavioralDetections,
+		},
+		{
+			"Total number of repeated-denied-action behavioral detections.",
+			"agentshield_detection_repeated_denied_total",
+			"counter",
+			snapshot.RepeatedDeniedDetections,
+		},
+		{
+			"Total number of repeated high-risk behavioral detections.",
+			"agentshield_detection_repeated_high_risk_total",
+			"counter",
+			snapshot.RepeatedHighRiskDetections,
+		},
+		{
+			"Total number of agent action-burst behavioral detections.",
+			"agentshield_detection_action_bursts_total",
+			"counter",
+			snapshot.ActionBurstDetections,
+		},
+		{
+			"Total number of high action-diversity behavioral detections.",
+			"agentshield_detection_action_diversity_total",
+			"counter",
+			snapshot.ActionDiversityDetections,
+		},
+		{
+			"Total number of high resource-diversity behavioral detections.",
+			"agentshield_detection_resource_diversity_total",
+			"counter",
+			snapshot.ResourceDiversityDetections,
 		},
 		{
 			"Total number of malformed or invalid security events rejected by the detection service.",

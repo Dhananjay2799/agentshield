@@ -8,12 +8,12 @@ import (
 	"net/http"
 	"os"
 	"os/signal"
-	"sync"
 	"syscall"
 	"time"
 
 	"github.com/twmb/franz-go/pkg/kgo"
 
+	"github.com/dhananjay2799/agentshield/services/detection/internal/behavior"
 	"github.com/dhananjay2799/agentshield/services/detection/internal/database"
 	"github.com/dhananjay2799/agentshield/services/detection/internal/dlq"
 	detectionmetrics "github.com/dhananjay2799/agentshield/services/detection/internal/metrics"
@@ -32,16 +32,11 @@ type SecurityEvent struct {
 	OccurredAt time.Time      `json:"occurred_at"`
 }
 
-type AgentActivity struct {
-	DeniedEvents []time.Time
-	HighRisk     []time.Time
-}
-
 type Detector struct {
-	mu                 sync.Mutex
-	activity           map[string]*AgentActivity
 	IncidentRepository *repository.IncidentRepository
 	Metrics            *detectionmetrics.Metrics
+	BehaviorTracker    *behavior.Tracker
+	BehaviorEngine     *behavior.Engine
 }
 
 func NewDetector(
@@ -49,40 +44,21 @@ func NewDetector(
 	metrics *detectionmetrics.Metrics,
 ) *Detector {
 	return &Detector{
-		activity:           make(map[string]*AgentActivity),
 		IncidentRepository: incidentRepository,
 		Metrics:            metrics,
+
+		BehaviorTracker: behavior.NewTracker(
+			60 * time.Second,
+		),
+
+		BehaviorEngine: behavior.NewEngine(),
 	}
 }
 
 func (d *Detector) Process(
 	event SecurityEvent,
 ) {
-	d.mu.Lock()
-	defer d.mu.Unlock()
-
-	now := time.Now().UTC()
-	windowStart :=
-		now.Add(-60 * time.Second)
-
-	activity, exists :=
-		d.activity[event.AgentID]
-
-	if !exists {
-		activity =
-			&AgentActivity{}
-
-		d.activity[event.AgentID] =
-			activity
-	}
-
-	activity.DeniedEvents =
-		pruneOld(
-			activity.DeniedEvents,
-			windowStart,
-		)
-
-		// ---------------------------------------------------------
+	// ---------------------------------------------------------
 	// SINGLE-EVENT DETECTIONS
 	// ---------------------------------------------------------
 
@@ -246,20 +222,23 @@ func (d *Detector) Process(
 		}
 	}
 
-	activity.HighRisk =
-		pruneOld(
-			activity.HighRisk,
-			windowStart,
-		)
+	// ---------------------------------------------------------
+	// BEHAVIORAL DETECTIONS
+	// ---------------------------------------------------------
+
+	behaviorEvent := behavior.Event{
+		AgentID:    event.AgentID,
+		Action:     event.Action,
+		Resource:   event.Resource,
+		Decision:   event.Decision,
+		RiskScore:  event.RiskScore,
+		OccurredAt: event.OccurredAt,
+	}
+
+	snapshot := d.BehaviorTracker.Record(behaviorEvent)
 
 	if event.Decision == "DENY" {
 		d.Metrics.RecordDenied()
-
-		activity.DeniedEvents =
-			append(
-				activity.DeniedEvents,
-				now,
-			)
 
 		log.Printf(
 			"ALERT: denied action detected agent=%s action=%s resource=%s",
@@ -272,12 +251,6 @@ func (d *Detector) Process(
 	if event.RiskScore >= 80 {
 		d.Metrics.RecordHighRisk()
 
-		activity.HighRisk =
-			append(
-				activity.HighRisk,
-				now,
-			)
-
 		log.Printf(
 			"ALERT: high-risk agent behavior agent=%s risk=%d",
 			event.AgentID,
@@ -285,114 +258,62 @@ func (d *Detector) Process(
 		)
 	}
 
-	if len(
-		activity.DeniedEvents,
-	) >= 5 {
+	detections := d.BehaviorEngine.Evaluate(
+		behaviorEvent,
+		snapshot,
+	)
+
+	for _, detection := range detections {
 		log.Printf(
-			"CRITICAL: repeated denied actions agent=%s count=%d window=60s possible compromise or privilege escalation",
+			"BEHAVIORAL DETECTION: type=%s severity=%s agent=%s action=%s denied_window=%d high_risk_window=%d event_window=%d",
+			detection.Type,
+			detection.Severity,
 			event.AgentID,
-			len(
-				activity.DeniedEvents,
-			),
+			event.Action,
+			snapshot.DeniedCount,
+			snapshot.HighRiskCount,
+			snapshot.EventCount,
 		)
 
-		err :=
-			d.IncidentRepository.
-				UpsertOpenIncident(
-					context.Background(),
-					repository.UpsertIncidentParams{
-						AgentID:      event.AgentID,
-						SessionID:    event.SessionID,
-						IncidentType: "repeated_denied_actions",
-						Severity:     "critical",
-						Title:        "Repeated denied actions detected",
-						Description:  "Agent generated at least five denied actions within a 60-second window.",
-						Metadata: map[string]any{
-							"event_count_window": len(
-								activity.DeniedEvents,
-							),
-							"action":     event.Action,
-							"resource":   event.Resource,
-							"risk_score": event.RiskScore,
-						},
-					},
-				)
+		metadata := detection.Metadata
+		if metadata == nil {
+			metadata = map[string]any{}
+		}
+
+		metadata["event_type"] = event.EventType
+		metadata["behavioral_detection"] = true
+		metadata["denied_count_window"] = snapshot.DeniedCount
+		metadata["high_risk_count_window"] = snapshot.HighRiskCount
+		metadata["event_count_window"] = snapshot.EventCount
+
+		err := d.IncidentRepository.UpsertOpenIncident(
+			context.Background(),
+			repository.UpsertIncidentParams{
+				AgentID:      event.AgentID,
+				SessionID:    event.SessionID,
+				IncidentType: detection.Type,
+				Severity:     detection.Severity,
+				Title:        detection.Title,
+				Description:  detection.Description,
+				Metadata:     metadata,
+			},
+		)
 
 		if err != nil {
 			log.Printf(
-				"failed to persist repeated-denial incident: %v",
+				"failed to persist behavioral incident type=%s: %v",
+				detection.Type,
 				err,
 			)
-		} else {
-			d.Metrics.RecordIncident()
+			continue
 		}
-	}
 
-	if len(
-		activity.HighRisk,
-	) >= 3 {
-		log.Printf(
-			"CRITICAL: repeated high-risk behavior agent=%s count=%d window=60s",
-			event.AgentID,
-			len(
-				activity.HighRisk,
-			),
+		d.Metrics.RecordIncident()
+
+		d.Metrics.RecordBehavioralDetection(
+			detection.Type,
 		)
-
-		err :=
-			d.IncidentRepository.
-				UpsertOpenIncident(
-					context.Background(),
-					repository.UpsertIncidentParams{
-						AgentID:      event.AgentID,
-						SessionID:    event.SessionID,
-						IncidentType: "repeated_high_risk_behavior",
-						Severity:     "critical",
-						Title:        "Repeated high-risk agent behavior",
-						Description:  "Agent generated at least three high-risk actions within a 60-second window.",
-						Metadata: map[string]any{
-							"event_count_window": len(
-								activity.HighRisk,
-							),
-							"action":     event.Action,
-							"resource":   event.Resource,
-							"risk_score": event.RiskScore,
-						},
-					},
-				)
-
-		if err != nil {
-			log.Printf(
-				"failed to persist high-risk incident: %v",
-				err,
-			)
-		} else {
-			d.Metrics.RecordIncident()
-		}
 	}
-}
-
-func pruneOld(
-	timestamps []time.Time,
-	windowStart time.Time,
-) []time.Time {
-	result :=
-		timestamps[:0]
-
-	for _, timestamp := range timestamps {
-
-		if timestamp.After(
-			windowStart,
-		) {
-			result =
-				append(
-					result,
-					timestamp,
-				)
-		}
-	}
-
-	return result
 }
 
 func main() {

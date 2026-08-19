@@ -120,3 +120,53 @@ groups:
         annotations:
           summary: "Open AgentShield incidents are unassigned"
           description: "One or more open AgentShield security incidents have no assigned SOC analyst."
+
+      - alert: AgentShieldRepeatedDeniedBehavior
+        expr: increase(agentshield_detection_repeated_denied_total[5m]) > 0
+        for: 30s
+        labels:
+          severity: critical
+          service: detection
+        annotations:
+          summary: "Repeated denied agent behavior detected"
+          description: "AgentShield Detection observed repeated denied actions within the behavioral detection window."
+
+      - alert: AgentShieldRepeatedHighRiskBehavior
+        expr: increase(agentshield_detection_repeated_high_risk_total[5m]) > 0
+        for: 30s
+        labels:
+          severity: critical
+          service: detection
+        annotations:
+          summary: "Repeated high-risk agent behavior detected"
+          description: "AgentShield Detection observed repeated high-risk autonomous-agent behavior."
+
+      - alert: AgentShieldActionBurstDetected
+        expr: increase(agentshield_detection_action_bursts_total[5m]) > 0
+        for: 30s
+        labels:
+          severity: warning
+          service: detection
+        annotations:
+          summary: "Autonomous-agent action burst detected"
+          description: "AgentShield Detection observed an unusually high rate of agent actions within the behavioral window."
+
+      - alert: AgentShieldActionDiversityDetected
+        expr: increase(agentshield_detection_action_diversity_total[5m]) > 0
+        for: 30s
+        labels:
+          severity: warning
+          service: detection
+        annotations:
+          summary: "Unusual autonomous-agent action diversity detected"
+          description: "AgentShield Detection observed an unusually broad set of actions from an autonomous agent."
+
+      - alert: AgentShieldResourceDiversityDetected
+        expr: increase(agentshield_detection_resource_diversity_total[5m]) > 0
+        for: 30s
+        labels:
+          severity: warning
+          service: detection
+        annotations:
+          summary: "Unusual autonomous-agent resource exploration detected"
+          description: "AgentShield Detection observed an unusually broad set of resources accessed within the behavioral window."
