@@ -26,6 +26,10 @@ type Snapshot struct {
 	LastPartition               int32      `json:"last_partition"`
 	DLQPublished                int64      `json:"dlq_published"`
 	DLQFailures                 int64      `json:"dlq_failures"`
+	AnomalyEvaluations          int64      `json:"anomaly_evaluations"`
+	AnomalyDetections           int64      `json:"anomaly_detections"`
+	BaselineWarmups             int64      `json:"baseline_warmups"`
+	BaselineUpdatesSkipped      int64      `json:"baseline_updates_skipped"`
 	LastProcessedAt             *time.Time `json:"last_processed_at,omitempty"`
 }
 
@@ -50,6 +54,10 @@ type Metrics struct {
 	lastPartition               int32
 	dlqPublished                int64
 	dlqFailures                 int64
+	anomalyEvaluations          int64
+	anomalyDetections           int64
+	baselineWarmups             int64
+	baselineUpdatesSkipped      int64
 	lastProcessedAt             *time.Time
 }
 
@@ -158,6 +166,34 @@ func (m *Metrics) RecordCommitFailure() {
 	m.commitFailures++
 }
 
+func (m *Metrics) RecordAnomalyEvaluation() {
+	m.mu.Lock()
+	defer m.mu.Unlock()
+
+	m.anomalyEvaluations++
+}
+
+func (m *Metrics) RecordAnomalyDetection() {
+	m.mu.Lock()
+	defer m.mu.Unlock()
+
+	m.anomalyDetections++
+}
+
+func (m *Metrics) RecordBaselineWarmup() {
+	m.mu.Lock()
+	defer m.mu.Unlock()
+
+	m.baselineWarmups++
+}
+
+func (m *Metrics) RecordBaselineUpdateSkipped() {
+	m.mu.Lock()
+	defer m.mu.Unlock()
+
+	m.baselineUpdatesSkipped++
+}
+
 func (m *Metrics) Snapshot() Snapshot {
 	m.mu.RLock()
 	defer m.mu.RUnlock()
@@ -187,6 +223,10 @@ func (m *Metrics) Snapshot() Snapshot {
 		DLQFailures:                 m.dlqFailures,
 		LastOffset:                  m.lastOffset,
 		LastPartition:               m.lastPartition,
+		AnomalyEvaluations:          m.anomalyEvaluations,
+		AnomalyDetections:           m.anomalyDetections,
+		BaselineWarmups:             m.baselineWarmups,
+		BaselineUpdatesSkipped:      m.baselineUpdatesSkipped,
 		LastProcessedAt:             lastProcessedAt,
 	}
 }
@@ -301,6 +341,30 @@ func (m *Metrics) WritePrometheus(w io.Writer) error {
 			"agentshield_detection_last_partition",
 			"gauge",
 			snapshot.LastPartition,
+		},
+		{
+			"Total number of agent baseline anomaly evaluations.",
+			"agentshield_detection_anomaly_evaluations_total",
+			"counter",
+			snapshot.AnomalyEvaluations,
+		},
+		{
+			"Total number of agent behavior anomalies detected.",
+			"agentshield_detection_anomaly_detections_total",
+			"counter",
+			snapshot.AnomalyDetections,
+		},
+		{
+			"Total number of times an agent baseline reached the minimum warm-up sample count.",
+			"agentshield_detection_baseline_warmups_total",
+			"counter",
+			snapshot.BaselineWarmups,
+		},
+		{
+			"Total number of baseline updates skipped because the observation was anomalous.",
+			"agentshield_detection_baseline_updates_skipped_total",
+			"counter",
+			snapshot.BaselineUpdatesSkipped,
 		},
 	}
 

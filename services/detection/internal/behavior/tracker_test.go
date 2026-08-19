@@ -266,3 +266,178 @@ func TestTrackerCountsDistinctActionsAndResources(
 		)
 	}
 }
+
+func TestTrackerWindowReturnsCurrentEvents(
+	t *testing.T,
+) {
+	tracker :=
+		NewTracker(
+			60 * time.Second,
+		)
+
+	base :=
+		time.Date(
+			2026,
+			time.August,
+			19,
+			12,
+			0,
+			0,
+			0,
+			time.UTC,
+		)
+
+	tracker.Record(
+		Event{
+			EventType:  "action_evaluation",
+			AgentID:    "agent-window",
+			SessionID:  "session-1",
+			Action:     "logs.read",
+			Resource:   "production/api",
+			Decision:   "ALLOW",
+			RiskScore:  10,
+			OccurredAt: base,
+		},
+	)
+
+	tracker.Record(
+		Event{
+			EventType: "action_evaluation",
+			AgentID:   "agent-window",
+			SessionID: "session-1",
+			Action:    "database.read",
+			Resource:  "production/db",
+			Decision:  "DENY",
+			RiskScore: 70,
+			OccurredAt: base.Add(
+				10 * time.Second,
+			),
+		},
+	)
+
+	events :=
+		tracker.Window(
+			"agent-window",
+		)
+
+	if len(events) != 2 {
+		t.Fatalf(
+			"expected 2 events, got %d",
+			len(events),
+		)
+	}
+
+	if events[0].Action != "logs.read" {
+		t.Fatalf(
+			"expected first action logs.read, got %s",
+			events[0].Action,
+		)
+	}
+
+	if events[1].Action != "database.read" {
+		t.Fatalf(
+			"expected second action database.read, got %s",
+			events[1].Action,
+		)
+	}
+}
+
+func TestTrackerWindowPrunesExpiredEvents(
+	t *testing.T,
+) {
+	tracker :=
+		NewTracker(
+			60 * time.Second,
+		)
+
+	base :=
+		time.Date(
+			2026,
+			time.August,
+			19,
+			12,
+			0,
+			0,
+			0,
+			time.UTC,
+		)
+
+	tracker.Record(
+		Event{
+			AgentID:    "agent-prune-window",
+			Action:     "old.action",
+			Decision:   "ALLOW",
+			RiskScore:  10,
+			OccurredAt: base,
+		},
+	)
+
+	tracker.Record(
+		Event{
+			AgentID:   "agent-prune-window",
+			Action:    "current.action",
+			Decision:  "ALLOW",
+			RiskScore: 10,
+			OccurredAt: base.Add(
+				61 * time.Second,
+			),
+		},
+	)
+
+	events :=
+		tracker.Window(
+			"agent-prune-window",
+		)
+
+	if len(events) != 1 {
+		t.Fatalf(
+			"expected 1 event after pruning, got %d",
+			len(events),
+		)
+	}
+
+	if events[0].Action != "current.action" {
+		t.Fatalf(
+			"expected current.action, got %s",
+			events[0].Action,
+		)
+	}
+}
+
+func TestTrackerWindowReturnsCopy(
+	t *testing.T,
+) {
+	tracker :=
+		NewTracker(
+			60 * time.Second,
+		)
+
+	tracker.Record(
+		Event{
+			AgentID:    "agent-copy",
+			Action:     "logs.read",
+			Decision:   "ALLOW",
+			OccurredAt: time.Now().UTC(),
+		},
+	)
+
+	first :=
+		tracker.Window(
+			"agent-copy",
+		)
+
+	first[0].Action =
+		"tampered"
+
+	second :=
+		tracker.Window(
+			"agent-copy",
+		)
+
+	if second[0].Action != "logs.read" {
+		t.Fatalf(
+			"tracker state was mutated through returned window: %s",
+			second[0].Action,
+		)
+	}
+}

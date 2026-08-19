@@ -19,6 +19,7 @@ type AgentActivity struct {
 	AllEvents    []time.Time
 	Actions      []TimedValue
 	Resources    []TimedValue
+	Events       []Event
 }
 
 type TimedValue struct {

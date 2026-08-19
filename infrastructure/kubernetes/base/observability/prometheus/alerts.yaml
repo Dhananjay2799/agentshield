@@ -91,6 +91,16 @@ groups:
           summary: "Detection Kafka fetch errors"
           description: "AgentShield Detection encountered Kafka fetch errors."
 
+      - alert: AgentShieldBehaviorAnomalyDetected
+        expr: increase(agentshield_detection_anomaly_detections_total[5m]) > 0
+        for: 30s
+        labels:
+          severity: critical
+          service: detection
+        annotations:
+          summary: "Autonomous agent behavior anomaly detected"
+          description: "AgentShield detected agent behavior that significantly deviates from its learned behavioral baseline."
+
       - alert: AgentShieldAuditFetchErrors
         expr: increase(agentshield_audit_fetch_errors_total[5m]) > 0
         for: 30s

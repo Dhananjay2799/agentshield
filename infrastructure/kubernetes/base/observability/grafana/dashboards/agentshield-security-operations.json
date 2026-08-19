@@ -1808,6 +1808,331 @@
                                    ],
                        "title":  "Behavioral Detection Activity",
                        "type":  "timeseries"
+                   },
+                   {
+                       "datasource":  {
+                                          "type":  "prometheus",
+                                          "uid":  "prometheus"
+                                      },
+                       "fieldConfig":  {
+                                           "defaults":  {
+                                                            "thresholds":  {
+                                                                               "steps":  [
+                                                                                             {
+                                                                                                 "value":  null,
+                                                                                                 "color":  "green"
+                                                                                             },
+                                                                                             {
+                                                                                                 "value":  1,
+                                                                                                 "color":  "yellow"
+                                                                                             }
+                                                                                         ],
+                                                                               "mode":  "absolute"
+                                                                           },
+                                                            "mappings":  [
+
+                                                                         ]
+                                                        },
+                                           "overrides":  [
+
+                                                         ]
+                                       },
+                       "gridPos":  {
+                                       "y":  52,
+                                       "w":  6,
+                                       "x":  0,
+                                       "h":  4
+                                   },
+                       "id":  29,
+                       "options":  {
+                                       "textMode":  "auto",
+                                       "wideLayout":  true,
+                                       "graphMode":  "area",
+                                       "reduceOptions":  {
+                                                             "values":  false,
+                                                             "calcs":  [
+                                                                           "lastNotNull"
+                                                                       ],
+                                                             "fields":  ""
+                                                         },
+                                       "justifyMode":  "auto",
+                                       "orientation":  "auto",
+                                       "colorMode":  "value"
+                                   },
+                       "pluginVersion":  "11.0.0",
+                       "targets":  [
+                                       {
+                                           "refId":  "A",
+                                           "expr":  "agentshield_detection_anomaly_evaluations_total"
+                                       }
+                                   ],
+                       "title":  "Anomaly Evaluations",
+                       "type":  "stat"
+                   },
+                   {
+                       "datasource":  {
+                                          "type":  "prometheus",
+                                          "uid":  "prometheus"
+                                      },
+                       "fieldConfig":  {
+                                           "defaults":  {
+                                                            "thresholds":  {
+                                                                               "steps":  [
+                                                                                             {
+                                                                                                 "value":  null,
+                                                                                                 "color":  "green"
+                                                                                             },
+                                                                                             {
+                                                                                                 "value":  1,
+                                                                                                 "color":  "red"
+                                                                                             }
+                                                                                         ],
+                                                                               "mode":  "absolute"
+                                                                           },
+                                                            "mappings":  [
+
+                                                                         ]
+                                                        },
+                                           "overrides":  [
+
+                                                         ]
+                                       },
+                       "gridPos":  {
+                                       "y":  52,
+                                       "w":  6,
+                                       "x":  6,
+                                       "h":  4
+                                   },
+                       "id":  30,
+                       "options":  {
+                                       "textMode":  "auto",
+                                       "wideLayout":  true,
+                                       "graphMode":  "area",
+                                       "reduceOptions":  {
+                                                             "values":  false,
+                                                             "calcs":  [
+                                                                           "lastNotNull"
+                                                                       ],
+                                                             "fields":  ""
+                                                         },
+                                       "justifyMode":  "auto",
+                                       "orientation":  "auto",
+                                       "colorMode":  "value"
+                                   },
+                       "pluginVersion":  "11.0.0",
+                       "targets":  [
+                                       {
+                                           "refId":  "A",
+                                           "expr":  "agentshield_detection_anomaly_detections_total"
+                                       }
+                                   ],
+                       "title":  "Agent Anomalies",
+                       "type":  "stat"
+                   },
+                   {
+                       "datasource":  {
+                                          "type":  "prometheus",
+                                          "uid":  "prometheus"
+                                      },
+                       "fieldConfig":  {
+                                           "defaults":  {
+                                                            "thresholds":  {
+                                                                               "steps":  [
+                                                                                             {
+                                                                                                 "value":  null,
+                                                                                                 "color":  "green"
+                                                                                             },
+                                                                                             {
+                                                                                                 "value":  1,
+                                                                                                 "color":  "green"
+                                                                                             }
+                                                                                         ],
+                                                                               "mode":  "absolute"
+                                                                           },
+                                                            "mappings":  [
+
+                                                                         ]
+                                                        },
+                                           "overrides":  [
+
+                                                         ]
+                                       },
+                       "gridPos":  {
+                                       "y":  52,
+                                       "w":  6,
+                                       "x":  12,
+                                       "h":  4
+                                   },
+                       "id":  31,
+                       "options":  {
+                                       "textMode":  "auto",
+                                       "wideLayout":  true,
+                                       "graphMode":  "area",
+                                       "reduceOptions":  {
+                                                             "values":  false,
+                                                             "calcs":  [
+                                                                           "lastNotNull"
+                                                                       ],
+                                                             "fields":  ""
+                                                         },
+                                       "justifyMode":  "auto",
+                                       "orientation":  "auto",
+                                       "colorMode":  "value"
+                                   },
+                       "pluginVersion":  "11.0.0",
+                       "targets":  [
+                                       {
+                                           "refId":  "A",
+                                           "expr":  "agentshield_detection_baseline_warmups_total"
+                                       }
+                                   ],
+                       "title":  "Baselines Warmed Up",
+                       "type":  "stat"
+                   },
+                   {
+                       "datasource":  {
+                                          "type":  "prometheus",
+                                          "uid":  "prometheus"
+                                      },
+                       "fieldConfig":  {
+                                           "defaults":  {
+                                                            "thresholds":  {
+                                                                               "steps":  [
+                                                                                             {
+                                                                                                 "value":  null,
+                                                                                                 "color":  "green"
+                                                                                             },
+                                                                                             {
+                                                                                                 "value":  1,
+                                                                                                 "color":  "orange"
+                                                                                             }
+                                                                                         ],
+                                                                               "mode":  "absolute"
+                                                                           },
+                                                            "mappings":  [
+
+                                                                         ]
+                                                        },
+                                           "overrides":  [
+
+                                                         ]
+                                       },
+                       "gridPos":  {
+                                       "y":  52,
+                                       "w":  6,
+                                       "x":  18,
+                                       "h":  4
+                                   },
+                       "id":  32,
+                       "options":  {
+                                       "textMode":  "auto",
+                                       "wideLayout":  true,
+                                       "graphMode":  "area",
+                                       "reduceOptions":  {
+                                                             "values":  false,
+                                                             "calcs":  [
+                                                                           "lastNotNull"
+                                                                       ],
+                                                             "fields":  ""
+                                                         },
+                                       "justifyMode":  "auto",
+                                       "orientation":  "auto",
+                                       "colorMode":  "value"
+                                   },
+                       "pluginVersion":  "11.0.0",
+                       "targets":  [
+                                       {
+                                           "refId":  "A",
+                                           "expr":  "agentshield_detection_baseline_updates_skipped_total"
+                                       }
+                                   ],
+                       "title":  "Baseline Updates Skipped",
+                       "type":  "stat"
+                   },
+                   {
+                       "datasource":  {
+                                          "type":  "prometheus",
+                                          "uid":  "prometheus"
+                                      },
+                       "fieldConfig":  {
+                                           "defaults":  {
+                                                            "custom":  {
+                                                                           "axisColorMode":  "text",
+                                                                           "spanNulls":  false,
+                                                                           "axisCenteredZero":  false,
+                                                                           "lineInterpolation":  "linear",
+                                                                           "pointSize":  5,
+                                                                           "fillOpacity":  10,
+                                                                           "lineWidth":  1,
+                                                                           "hideFrom":  {
+                                                                                            "tooltip":  false,
+                                                                                            "viz":  false,
+                                                                                            "legend":  false
+                                                                                        },
+                                                                           "drawStyle":  "line",
+                                                                           "scaleDistribution":  {
+                                                                                                     "type":  "linear"
+                                                                                                 },
+                                                                           "showPoints":  "auto",
+                                                                           "axisPlacement":  "auto",
+                                                                           "thresholdsStyle":  {
+                                                                                                   "mode":  "off"
+                                                                                               },
+                                                                           "stacking":  {
+                                                                                            "mode":  "none",
+                                                                                            "group":  "A"
+                                                                                        }
+                                                                       }
+                                                        },
+                                           "overrides":  [
+
+                                                         ]
+                                       },
+                       "gridPos":  {
+                                       "y":  56,
+                                       "w":  24,
+                                       "x":  0,
+                                       "h":  8
+                                   },
+                       "id":  33,
+                       "options":  {
+                                       "legend":  {
+                                                      "placement":  "bottom",
+                                                      "showLegend":  true,
+                                                      "calcs":  [
+                                                                    "lastNotNull"
+                                                                ],
+                                                      "displayMode":  "table"
+                                                  },
+                                       "tooltip":  {
+                                                       "sort":  "desc",
+                                                       "mode":  "multi"
+                                                   }
+                                   },
+                       "targets":  [
+                                       {
+                                           "legendFormat":  "Anomaly Evaluations",
+                                           "expr":  "increase(agentshield_detection_anomaly_evaluations_total[5m])",
+                                           "refId":  "A"
+                                       },
+                                       {
+                                           "legendFormat":  "Agent Anomalies",
+                                           "expr":  "increase(agentshield_detection_anomaly_detections_total[5m])",
+                                           "refId":  "B"
+                                       },
+                                       {
+                                           "legendFormat":  "Baseline Warmups",
+                                           "expr":  "increase(agentshield_detection_baseline_warmups_total[5m])",
+                                           "refId":  "C"
+                                       },
+                                       {
+                                           "legendFormat":  "Baseline Updates Skipped",
+                                           "expr":  "increase(agentshield_detection_baseline_updates_skipped_total[5m])",
+                                           "refId":  "D"
+                                       }
+                                   ],
+                       "title":  "Adaptive Anomaly Activity",
+                       "type":  "timeseries"
                    }
                ],
     "refresh":  "10s",
@@ -1833,6 +2158,6 @@
     "timezone":  "browser",
     "title":  "AgentShield Security Operations",
     "uid":  "agentshield-security-operations",
-    "version":  3,
+    "version":  4,
     "weekStart":  ""
 }

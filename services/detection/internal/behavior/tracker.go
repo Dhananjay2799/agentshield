@@ -63,6 +63,13 @@ func (t *Tracker) Record(
 			activity.AllEvents,
 			windowStart,
 		)
+	event.OccurredAt = now
+
+	activity.Events =
+		append(
+			activity.Events,
+			event,
+		)
 
 	activity.Actions =
 		pruneTimedValues(
@@ -73,6 +80,12 @@ func (t *Tracker) Record(
 	activity.Resources =
 		pruneTimedValues(
 			activity.Resources,
+			windowStart,
+		)
+
+	activity.Events =
+		pruneEvents(
+			activity.Events,
 			windowStart,
 		)
 
@@ -201,4 +214,51 @@ func countDistinct(
 	}
 
 	return len(seen)
+}
+
+func pruneEvents(
+	events []Event,
+	windowStart time.Time,
+) []Event {
+	result := events[:0]
+
+	for _, event := range events {
+		if event.OccurredAt.After(windowStart) {
+			result = append(
+				result,
+				event,
+			)
+		}
+	}
+
+	return result
+}
+
+func (t *Tracker) Window(
+	agentID string,
+) []Event {
+	t.mu.Lock()
+	defer t.mu.Unlock()
+
+	activity, exists :=
+		t.activity[agentID]
+
+	if !exists ||
+		len(activity.Events) == 0 {
+
+		return []Event{}
+	}
+
+	events :=
+		make(
+			[]Event,
+			len(activity.Events),
+		)
+
+	copy(
+		events,
+		activity.Events,
+	)
+
+	return events
 }

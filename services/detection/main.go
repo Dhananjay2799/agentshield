@@ -13,9 +13,11 @@ import (
 
 	"github.com/twmb/franz-go/pkg/kgo"
 
+	"github.com/dhananjay2799/agentshield/services/detection/internal/baseline"
 	"github.com/dhananjay2799/agentshield/services/detection/internal/behavior"
 	"github.com/dhananjay2799/agentshield/services/detection/internal/database"
 	"github.com/dhananjay2799/agentshield/services/detection/internal/dlq"
+	"github.com/dhananjay2799/agentshield/services/detection/internal/features"
 	detectionmetrics "github.com/dhananjay2799/agentshield/services/detection/internal/metrics"
 	"github.com/dhananjay2799/agentshield/services/detection/internal/repository"
 )
@@ -37,6 +39,9 @@ type Detector struct {
 	Metrics            *detectionmetrics.Metrics
 	BehaviorTracker    *behavior.Tracker
 	BehaviorEngine     *behavior.Engine
+	FeatureExtractor   *features.Extractor
+	BaselineStore      *baseline.Store
+	BaselineMinSamples int64
 }
 
 func NewDetector(
@@ -52,6 +57,12 @@ func NewDetector(
 		),
 
 		BehaviorEngine: behavior.NewEngine(),
+
+		FeatureExtractor: features.NewExtractor(),
+
+		BaselineStore: baseline.NewStore(),
+
+		BaselineMinSamples: 5,
 	}
 }
 
@@ -227,7 +238,9 @@ func (d *Detector) Process(
 	// ---------------------------------------------------------
 
 	behaviorEvent := behavior.Event{
+		EventType:  event.EventType,
 		AgentID:    event.AgentID,
+		SessionID:  event.SessionID,
 		Action:     event.Action,
 		Resource:   event.Resource,
 		Decision:   event.Decision,
@@ -312,6 +325,187 @@ func (d *Detector) Process(
 
 		d.Metrics.RecordBehavioralDetection(
 			detection.Type,
+		)
+	}
+
+	// ---------------------------------------------------------
+	// AGENT BASELINE + ANOMALY DETECTION
+	// ---------------------------------------------------------
+
+	window :=
+		d.BehaviorTracker.Window(
+			event.AgentID,
+		)
+
+	featureEvents :=
+		make(
+			[]features.Event,
+			0,
+			len(window),
+		)
+
+	for _, windowEvent := range window {
+		featureEvents =
+			append(
+				featureEvents,
+				features.Event{
+					AgentID:    windowEvent.AgentID,
+					SessionID:  windowEvent.SessionID,
+					Action:     windowEvent.Action,
+					Resource:   windowEvent.Resource,
+					Decision:   windowEvent.Decision,
+					RiskScore:  windowEvent.RiskScore,
+					OccurredAt: windowEvent.OccurredAt,
+				},
+			)
+	}
+
+	vector :=
+		d.FeatureExtractor.Extract(
+			event.AgentID,
+			featureEvents,
+		)
+
+	observation :=
+		baseline.Observation{
+			EventCount: float64(
+				vector.EventCount,
+			),
+
+			DenyRatio: vector.DenyRatio,
+
+			HighRiskRatio: vector.HighRiskRatio,
+
+			ActionDiversityRatio: vector.ActionDiversityRatio,
+
+			ResourceDiversityRatio: vector.ResourceDiversityRatio,
+
+			AverageRiskScore: vector.AverageRiskScore,
+
+			ProductionAccessRatio: vector.ProductionAccessRatio,
+
+			SensitiveActionRatio: vector.SensitiveActionRatio,
+		}
+
+	isAnomalous := false
+
+	profile, exists :=
+		d.BaselineStore.Get(
+			event.AgentID,
+		)
+
+	if exists {
+		d.Metrics.RecordAnomalyEvaluation()
+
+		score :=
+			baseline.ScoreObservation(
+				profile,
+				observation,
+				d.BaselineMinSamples,
+			)
+
+		log.Printf(
+			"ANOMALY SCORE: agent=%s score=%.4f warmed_up=%t samples=%d events=%d",
+			event.AgentID,
+			score.Value,
+			score.WarmedUp,
+			score.SampleCount,
+			vector.EventCount,
+		)
+
+		if score.IsAnomalous {
+			isAnomalous = true
+			d.Metrics.RecordAnomalyDetection()
+
+			metadata :=
+				map[string]any{
+					"anomaly_detection": true,
+					"anomaly_score":     score.Value,
+					"baseline_samples":  score.SampleCount,
+
+					"event_count": vector.EventCount,
+
+					"deny_ratio": vector.DenyRatio,
+
+					"high_risk_ratio": vector.HighRiskRatio,
+
+					"action_diversity_ratio": vector.ActionDiversityRatio,
+
+					"resource_diversity_ratio": vector.ResourceDiversityRatio,
+
+					"average_risk_score": vector.AverageRiskScore,
+
+					"production_access_ratio": vector.ProductionAccessRatio,
+
+					"sensitive_action_ratio": vector.SensitiveActionRatio,
+
+					"explanation": score.Explanation,
+				}
+
+			err :=
+				d.IncidentRepository.UpsertOpenIncident(
+					context.Background(),
+					repository.UpsertIncidentParams{
+						AgentID: event.AgentID,
+
+						SessionID: event.SessionID,
+
+						IncidentType: "agent_behavior_anomaly",
+
+						Severity: "critical",
+
+						Title: "Autonomous agent behavior anomaly detected",
+
+						Description: "AgentShield detected behavior that significantly deviates from the agent's learned baseline.",
+
+						Metadata: metadata,
+					},
+				)
+
+			if err != nil {
+				log.Printf(
+					"failed to persist anomaly incident agent=%s score=%.4f: %v",
+					event.AgentID,
+					score.Value,
+					err,
+				)
+			} else {
+				d.Metrics.RecordIncident()
+
+				log.Printf(
+					"AGENT ANOMALY DETECTED: agent=%s score=%.4f samples=%d",
+					event.AgentID,
+					score.Value,
+					score.SampleCount,
+				)
+			}
+		}
+	}
+
+	if isAnomalous {
+		d.Metrics.RecordBaselineUpdateSkipped()
+
+		log.Printf(
+			"BASELINE UPDATE SKIPPED: agent=%s reason=anomalous_observation",
+			event.AgentID,
+		)
+	} else {
+		updatedProfile :=
+			d.BaselineStore.Observe(
+				event.AgentID,
+				observation,
+			)
+
+		if updatedProfile.SampleCount == d.BaselineMinSamples {
+			d.Metrics.RecordBaselineWarmup()
+		}
+
+		log.Printf(
+			"AGENT BASELINE: agent=%s samples=%d mean_events=%.2f mean_risk=%.2f",
+			event.AgentID,
+			updatedProfile.SampleCount,
+			updatedProfile.Mean.EventCount,
+			updatedProfile.Mean.AverageRiskScore,
 		)
 	}
 }
