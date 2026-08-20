@@ -280,6 +280,7 @@ func main() {
 			containmentRepository,
 			auditRepository,
 			eventProducer,
+			gatewayMetrics,
 		)
 
 	// ============================================================

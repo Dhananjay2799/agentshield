@@ -1,6 +1,7 @@
 package handlers
 
 import (
+	"context"
 	"errors"
 	"log"
 	"net/http"
@@ -8,6 +9,7 @@ import (
 	"time"
 
 	"github.com/dhananjay2799/agentshield/services/gateway/internal/events"
+	gatewaymetrics "github.com/dhananjay2799/agentshield/services/gateway/internal/metrics"
 	"github.com/dhananjay2799/agentshield/services/gateway/internal/repository"
 )
 
@@ -15,17 +17,20 @@ type ContainmentHandler struct {
 	Repository      *repository.ContainmentRepository
 	AuditRepository *repository.AuditRepository
 	EventProducer   *events.Producer
+	Metrics         *gatewaymetrics.Metrics
 }
 
 func NewContainmentHandler(
 	repository *repository.ContainmentRepository,
 	auditRepository *repository.AuditRepository,
 	eventProducer *events.Producer,
+	metrics *gatewaymetrics.Metrics,
 ) *ContainmentHandler {
 	return &ContainmentHandler{
 		Repository:      repository,
 		AuditRepository: auditRepository,
 		EventProducer:   eventProducer,
+		Metrics:         metrics,
 	}
 }
 
@@ -126,10 +131,23 @@ func (h *ContainmentHandler) Contain(
 			OccurredAt: time.Now().UTC(),
 		}
 
-		if err := h.EventProducer.Publish(
+		publishCtx, cancelPublish := context.WithTimeout(
 			r.Context(),
+			500*time.Millisecond,
+		)
+
+		err := h.EventProducer.Publish(
+			publishCtx,
 			event,
-		); err != nil {
+		)
+
+		cancelPublish()
+
+		if err != nil {
+			if h.Metrics != nil {
+				h.Metrics.RecordKafkaFailure()
+			}
+
 			log.Printf(
 				"failed to publish containment security event: agent=%s error=%v",
 				result.AgentID,

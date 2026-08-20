@@ -1,6 +1,7 @@
 package handlers
 
 import (
+	"context"
 	"errors"
 	"log"
 	"net/http"
@@ -332,10 +333,21 @@ func (h *ActionHandler) Evaluate(w http.ResponseWriter, r *http.Request) {
 		session.AgentID,
 	)
 
-	if err := h.EventProducer.Publish(r.Context(), event); err != nil {
+	publishCtx, cancelPublish := context.WithTimeout(
+		r.Context(),
+		1*time.Second,
+	)
+	defer cancelPublish()
+
+	if err := h.EventProducer.Publish(publishCtx, event); err != nil {
 		h.Metrics.RecordKafkaFailure()
 
-		log.Printf("failed to publish security event: %v", err)
+		log.Printf(
+			"failed to publish security event: action=%s agent=%s error=%v",
+			req.Action,
+			session.AgentID,
+			err,
+		)
 	} else {
 		log.Printf("security event published successfully")
 	}

@@ -49,7 +49,7 @@ spec:
 
       containers:
         - name: gateway
-          image: agentshield-gateway:phase37-containment
+          image: agentshield-gateway:phase38-kafka-timeout
           imagePullPolicy: IfNotPresent
 
           ports:
