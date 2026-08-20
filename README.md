@@ -1,4 +1,7 @@
 # AgentShield
+[![CI](https://github.com/Dhananjay2799/agentshield/actions/workflows/ci.yml/badge.svg)](https://github.com/Dhananjay2799/agentshield/actions/workflows/ci.yml)
+[![Gateway Security CI](https://github.com/Dhananjay2799/agentshield/actions/workflows/gateway-security-ci.yml/badge.svg)](https://github.com/Dhananjay2799/agentshield/actions/workflows/gateway-security-ci.yml)
+[![Kubernetes CI](https://github.com/Dhananjay2799/agentshield/actions/workflows/kubernetes-ci.yml/badge.svg)](https://github.com/Dhananjay2799/agentshield/actions/workflows/kubernetes-ci.yml)
 
 ### Zero-Trust Security Control Plane for Autonomous AI Agents
 
