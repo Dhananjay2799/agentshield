@@ -5,9 +5,9 @@ services:
     restart: unless-stopped
 
     environment:
-      POSTGRES_USER: agentshield
-      POSTGRES_PASSWORD: agentshield_dev_password
-      POSTGRES_DB: agentshield
+      POSTGRES_USER: ${POSTGRES_USER:-agentshield}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD}
+      POSTGRES_DB: ${POSTGRES_DB:-agentshield}
 
     ports:
       - "5432:5432"
@@ -19,7 +19,7 @@ services:
       - backend
 
     healthcheck:
-      test: ["CMD-SHELL", "pg_isready -U agentshield -d agentshield"]
+      test: ["CMD-SHELL", "pg_isready -U ${POSTGRES_USER:-agentshield} -d ${POSTGRES_DB:-agentshield}"]
       interval: 5s
       timeout: 5s
       retries: 5
@@ -96,7 +96,7 @@ services:
     mem_reservation: 128m
 
     environment:
-      DATABASE_URL: postgres://agentshield:agentshield_dev_password@postgres:5432/agentshield
+      DATABASE_URL: postgres://${POSTGRES_USER:-agentshield}:${POSTGRES_PASSWORD}@postgres:5432/${POSTGRES_DB:-agentshield}
       OPA_URL: http://opa:8181
       KAFKA_BROKER: redpanda:9092
       AGENTSHIELD_ADMIN_API_KEY: ${AGENTSHIELD_ADMIN_API_KEY}
@@ -242,7 +242,7 @@ services:
     mem_reservation: 128m
 
     environment:
-      DATABASE_URL: postgres://agentshield:agentshield_dev_password@postgres:5432/agentshield
+      DATABASE_URL: postgres://${POSTGRES_USER:-agentshield}:${POSTGRES_PASSWORD}@postgres:5432/${POSTGRES_DB:-agentshield}
       KAFKA_BROKER: redpanda:9092
       KAFKA_SECURITY_TOPIC: agentshield.security.events
       KAFKA_DLQ_TOPIC: agentshield.security.dlq
