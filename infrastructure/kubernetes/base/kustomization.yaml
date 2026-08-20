@@ -11,6 +11,7 @@ resources:
 
   - ml-anomaly/ml-anomaly.yaml
   - networking/ml-anomaly-access.yaml
+  - networking/prometheus-ml-anomaly-egress.yaml
 
   - observability/prometheus/prometheus.yaml
   - observability/grafana/grafana.yaml

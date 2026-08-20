@@ -8,21 +8,40 @@ from pydantic import BaseModel, Field
 from prometheus_client import (
     CONTENT_TYPE_LATEST,
     Counter,
+    Gauge,
     Histogram,
     generate_latest,
 )
 from starlette.responses import Response
 
+from app.drift import DriftDetector
 from app.features import BehaviorFeatures
 from app.inference import InferenceEngine
-
+from app.model_metadata import (
+    load_metadata,
+)
 
 MODEL_PATH = Path(
     "models/behavior_autoencoder.pt"
 )
 
+MODEL_METADATA_PATH = Path(
+    "models/model_metadata.json"
+)
+
 engine = InferenceEngine(
     MODEL_PATH
+)
+
+model_metadata = load_metadata(
+    MODEL_METADATA_PATH
+)
+
+drift_detector = DriftDetector(
+    window_size=100,
+    minimum_samples=20,
+    score_ratio_threshold=1.5,
+    anomaly_rate_threshold=0.25,
 )
 
 app = FastAPI(
@@ -49,6 +68,31 @@ PREDICTION_ERRORS = Counter(
 PREDICTION_LATENCY = Histogram(
     "agentshield_ml_prediction_latency_seconds",
     "ML anomaly prediction latency in seconds.",
+)
+
+DRIFT_SCORE = Gauge(
+    "agentshield_ml_drift_score",
+    "Current AgentShield ML behavioral drift score.",
+)
+
+DRIFT_ANOMALY_RATE = Gauge(
+    "agentshield_ml_drift_anomaly_rate",
+    "Current anomaly rate inside the ML drift window.",
+)
+
+DRIFT_MEAN_SCORE_RATIO = Gauge(
+    "agentshield_ml_drift_mean_score_ratio",
+    "Mean reconstruction score ratio in the ML drift window.",
+)
+
+DRIFT_SAMPLE_COUNT = Gauge(
+    "agentshield_ml_drift_sample_count",
+    "Current number of samples in the ML drift window.",
+)
+
+DRIFT_ACTIVE = Gauge(
+    "agentshield_ml_drift_active",
+    "Whether AgentShield currently detects behavioral model drift.",
 )
 
 
@@ -124,10 +168,66 @@ def ready() -> dict[str, object]:
             "ready",
         "model_loaded":
             True,
+        "model_version":
+            model_metadata.model_version,
         "threshold":
             engine.threshold,
         "feature_count":
             len(engine.feature_names),
+    }
+
+
+@app.get(
+    "/model"
+)
+def model() -> dict[str, object]:
+    return {
+        "model_name":
+            model_metadata.model_name,
+        "model_version":
+            model_metadata.model_version,
+        "model_type":
+            model_metadata.model_type,
+        "feature_count":
+            model_metadata.feature_count,
+        "threshold":
+            model_metadata.threshold,
+        "training_samples":
+            model_metadata.training_samples,
+        "validation_samples":
+            model_metadata.validation_samples,
+        "anomaly_test_samples":
+            model_metadata.anomaly_test_samples,
+        "training_data_sha256":
+            model_metadata.training_data_sha256,
+    }
+
+
+@app.get(
+    "/drift"
+)
+def drift() -> dict[str, object]:
+    snapshot = (
+        drift_detector.snapshot()
+    )
+
+    return {
+        "model_version":
+            model_metadata.model_version,
+        "sample_count":
+            snapshot.sample_count,
+        "mean_score_ratio":
+            snapshot.mean_score_ratio,
+        "anomaly_rate":
+            snapshot.anomaly_rate,
+        "drift_score":
+            snapshot.drift_score,
+        "is_drifting":
+            snapshot.is_drifting,
+        "minimum_samples":
+            drift_detector.minimum_samples,
+        "window_size":
+            drift_detector.window_size,
     }
 
 
@@ -160,6 +260,31 @@ def predict(
                 sensitive_action_ratio=
                     request.sensitive_action_ratio,
             )
+        )
+
+        drift_snapshot = (
+            drift_detector.record(
+                prediction.score_ratio,
+                prediction.is_anomaly,
+            )
+        )
+
+        DRIFT_SCORE.set(
+            drift_snapshot.drift_score
+        )
+        DRIFT_ANOMALY_RATE.set(
+            drift_snapshot.anomaly_rate
+        )
+        DRIFT_MEAN_SCORE_RATIO.set(
+            drift_snapshot.mean_score_ratio
+        )
+        DRIFT_SAMPLE_COUNT.set(
+            drift_snapshot.sample_count
+        )
+        DRIFT_ACTIVE.set(
+            1
+            if drift_snapshot.is_drifting
+            else 0
         )
 
         PREDICTIONS.inc()

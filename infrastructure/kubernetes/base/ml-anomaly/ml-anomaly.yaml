@@ -38,7 +38,7 @@ spec:
     spec:
       containers:
         - name: ml-anomaly
-          image: agentshield-ml-anomaly:phase35-pytorch
+          image: agentshield-ml-anomaly:phase36-drift
           imagePullPolicy: IfNotPresent
 
           ports:

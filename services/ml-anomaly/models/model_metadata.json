@@ -1,0 +1,11 @@
+{
+  "model_name": "behavior-autoencoder",
+  "model_version": "v1",
+  "model_type": "pytorch-autoencoder",
+  "feature_count": 8,
+  "threshold": 0.006948893424123526,
+  "training_samples": 4000,
+  "validation_samples": 1000,
+  "anomaly_test_samples": 1000,
+  "training_data_sha256": "fd7f19c52caa18565ba28f178991fe38e912ae1dc70e5603b4e8ff8e794ad58f"
+}

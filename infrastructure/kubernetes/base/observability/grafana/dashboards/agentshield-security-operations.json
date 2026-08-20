@@ -2370,6 +2370,286 @@
 
                                                          ]
                                        }
+                   },
+                   {
+                       "id":  39,
+                       "type":  "stat",
+                       "title":  "Model Drift Active",
+                       "gridPos":  {
+                                       "y":  76,
+                                       "w":  5,
+                                       "x":  0,
+                                       "h":  4
+                                   },
+                       "datasource":  {
+                                          "type":  "prometheus",
+                                          "uid":  "prometheus"
+                                      },
+                       "targets":  [
+                                       {
+                                           "refId":  "A",
+                                           "expr":  "agentshield_ml_drift_active"
+                                       }
+                                   ],
+                       "options":  {
+                                       "textMode":  "auto",
+                                       "colorMode":  "value",
+                                       "graphMode":  "area",
+                                       "reduceOptions":  {
+                                                             "values":  false,
+                                                             "calcs":  [
+                                                                           "lastNotNull"
+                                                                       ],
+                                                             "fields":  ""
+                                                         },
+                                       "justifyMode":  "auto",
+                                       "orientation":  "auto"
+                                   },
+                       "fieldConfig":  {
+                                           "defaults":  {
+
+                                                        },
+                                           "overrides":  [
+
+                                                         ]
+                                       }
+                   },
+                   {
+                       "id":  40,
+                       "type":  "stat",
+                       "title":  "Drift Score",
+                       "gridPos":  {
+                                       "y":  76,
+                                       "w":  5,
+                                       "x":  5,
+                                       "h":  4
+                                   },
+                       "datasource":  {
+                                          "type":  "prometheus",
+                                          "uid":  "prometheus"
+                                      },
+                       "targets":  [
+                                       {
+                                           "refId":  "A",
+                                           "expr":  "agentshield_ml_drift_score"
+                                       }
+                                   ],
+                       "options":  {
+                                       "textMode":  "auto",
+                                       "colorMode":  "value",
+                                       "graphMode":  "area",
+                                       "reduceOptions":  {
+                                                             "values":  false,
+                                                             "calcs":  [
+                                                                           "lastNotNull"
+                                                                       ],
+                                                             "fields":  ""
+                                                         },
+                                       "justifyMode":  "auto",
+                                       "orientation":  "auto"
+                                   },
+                       "fieldConfig":  {
+                                           "defaults":  {
+
+                                                        },
+                                           "overrides":  [
+
+                                                         ]
+                                       }
+                   },
+                   {
+                       "id":  41,
+                       "type":  "stat",
+                       "title":  "Drift Anomaly Rate",
+                       "gridPos":  {
+                                       "y":  76,
+                                       "w":  5,
+                                       "x":  10,
+                                       "h":  4
+                                   },
+                       "datasource":  {
+                                          "type":  "prometheus",
+                                          "uid":  "prometheus"
+                                      },
+                       "targets":  [
+                                       {
+                                           "refId":  "A",
+                                           "expr":  "agentshield_ml_drift_anomaly_rate"
+                                       }
+                                   ],
+                       "options":  {
+                                       "textMode":  "auto",
+                                       "colorMode":  "value",
+                                       "graphMode":  "area",
+                                       "reduceOptions":  {
+                                                             "values":  false,
+                                                             "calcs":  [
+                                                                           "lastNotNull"
+                                                                       ],
+                                                             "fields":  ""
+                                                         },
+                                       "justifyMode":  "auto",
+                                       "orientation":  "auto"
+                                   },
+                       "fieldConfig":  {
+                                           "defaults":  {
+
+                                                        },
+                                           "overrides":  [
+
+                                                         ]
+                                       }
+                   },
+                   {
+                       "id":  42,
+                       "type":  "stat",
+                       "title":  "Drift Mean Score Ratio",
+                       "gridPos":  {
+                                       "y":  76,
+                                       "w":  5,
+                                       "x":  15,
+                                       "h":  4
+                                   },
+                       "datasource":  {
+                                          "type":  "prometheus",
+                                          "uid":  "prometheus"
+                                      },
+                       "targets":  [
+                                       {
+                                           "refId":  "A",
+                                           "expr":  "agentshield_ml_drift_mean_score_ratio"
+                                       }
+                                   ],
+                       "options":  {
+                                       "textMode":  "auto",
+                                       "colorMode":  "value",
+                                       "graphMode":  "area",
+                                       "reduceOptions":  {
+                                                             "values":  false,
+                                                             "calcs":  [
+                                                                           "lastNotNull"
+                                                                       ],
+                                                             "fields":  ""
+                                                         },
+                                       "justifyMode":  "auto",
+                                       "orientation":  "auto"
+                                   },
+                       "fieldConfig":  {
+                                           "defaults":  {
+
+                                                        },
+                                           "overrides":  [
+
+                                                         ]
+                                       }
+                   },
+                   {
+                       "id":  43,
+                       "type":  "stat",
+                       "title":  "Drift Window Samples",
+                       "gridPos":  {
+                                       "y":  76,
+                                       "w":  4,
+                                       "x":  20,
+                                       "h":  4
+                                   },
+                       "datasource":  {
+                                          "type":  "prometheus",
+                                          "uid":  "prometheus"
+                                      },
+                       "targets":  [
+                                       {
+                                           "refId":  "A",
+                                           "expr":  "agentshield_ml_drift_sample_count"
+                                       }
+                                   ],
+                       "options":  {
+                                       "textMode":  "auto",
+                                       "colorMode":  "value",
+                                       "graphMode":  "area",
+                                       "reduceOptions":  {
+                                                             "values":  false,
+                                                             "calcs":  [
+                                                                           "lastNotNull"
+                                                                       ],
+                                                             "fields":  ""
+                                                         },
+                                       "justifyMode":  "auto",
+                                       "orientation":  "auto"
+                                   },
+                       "fieldConfig":  {
+                                           "defaults":  {
+
+                                                        },
+                                           "overrides":  [
+
+                                                         ]
+                                       }
+                   },
+                   {
+                       "id":  44,
+                       "type":  "timeseries",
+                       "title":  "Model Drift Activity",
+                       "gridPos":  {
+                                       "y":  80,
+                                       "w":  24,
+                                       "x":  0,
+                                       "h":  8
+                                   },
+                       "datasource":  {
+                                          "type":  "prometheus",
+                                          "uid":  "prometheus"
+                                      },
+                       "targets":  [
+                                       {
+                                           "legendFormat":  "Drift Score",
+                                           "expr":  "agentshield_ml_drift_score",
+                                           "refId":  "A"
+                                       },
+                                       {
+                                           "legendFormat":  "Mean Score Ratio",
+                                           "expr":  "agentshield_ml_drift_mean_score_ratio",
+                                           "refId":  "B"
+                                       },
+                                       {
+                                           "legendFormat":  "Anomaly Rate",
+                                           "expr":  "agentshield_ml_drift_anomaly_rate",
+                                           "refId":  "C"
+                                       },
+                                       {
+                                           "legendFormat":  "Drift Active",
+                                           "expr":  "agentshield_ml_drift_active",
+                                           "refId":  "D"
+                                       }
+                                   ],
+                       "options":  {
+                                       "legend":  {
+                                                      "placement":  "bottom",
+                                                      "calcs":  [
+
+                                                                ],
+                                                      "displayMode":  "list"
+                                                  },
+                                       "tooltip":  {
+                                                       "sort":  "none",
+                                                       "mode":  "multi"
+                                                   }
+                                   },
+                       "fieldConfig":  {
+                                           "defaults":  {
+                                                            "custom":  {
+                                                                           "fillOpacity":  0,
+                                                                           "spanNulls":  false,
+                                                                           "showPoints":  "auto",
+                                                                           "drawStyle":  "line",
+                                                                           "lineWidth":  1,
+                                                                           "lineInterpolation":  "linear"
+                                                                       }
+                                                        },
+                                           "overrides":  [
+
+                                                         ]
+                                       }
                    }
                ],
     "refresh":  "10s",

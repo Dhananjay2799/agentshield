@@ -30,6 +30,26 @@ groups:
           summary: "AgentShield ML inference failures detected"
           description: "The Detection service encountered one or more failures while requesting neural anomaly inference."
 
+      - alert: AgentShieldMLBehaviorDriftDetected
+        expr: agentshield_ml_drift_active > 0
+        for: 2m
+        labels:
+          severity: warning
+          service: ml-anomaly
+        annotations:
+          summary: "AgentShield ML behavioral drift detected"
+          description: "Recent autonomous-agent behavior has drifted beyond the distribution expected by the deployed PyTorch model."
+
+      - alert: AgentShieldMLDriftScoreCritical
+        expr: agentshield_ml_drift_score > 3
+        for: 2m
+        labels:
+          severity: critical
+          service: ml-anomaly
+        annotations:
+          summary: "AgentShield ML drift score is critically elevated"
+          description: "The deployed neural behavior model is observing a sustained production distribution shift."
+
       - alert: AgentShieldMLAnomalyRateHigh
         expr: |
           (

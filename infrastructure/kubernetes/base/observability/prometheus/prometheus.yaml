@@ -52,6 +52,12 @@ data:
           - targets:
               - detection:8083
 
+      - job_name: "ml-anomaly"
+        metrics_path: /metrics
+        static_configs:
+          - targets:
+              - ml-anomaly:8085
+
       - job_name: "opa"
         metrics_path: /metrics
         static_configs:

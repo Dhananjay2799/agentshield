@@ -115,3 +115,67 @@ def test_metrics_endpoint():
         "agentshield_ml_predictions_total"
         in response.text
     )
+
+
+def test_model_metadata_endpoint():
+    response = client.get(
+        "/model"
+    )
+
+    assert response.status_code == 200
+
+    payload = response.json()
+
+    assert payload[
+        "model_name"
+    ] == "behavior-autoencoder"
+
+    assert payload[
+        "model_version"
+    ] == "v1"
+
+    assert payload[
+        "model_type"
+    ] == "pytorch-autoencoder"
+
+    assert payload[
+        "feature_count"
+    ] == 8
+
+    assert payload[
+        "training_data_sha256"
+    ]
+
+
+def test_ready_exposes_model_version():
+    response = client.get(
+        "/ready"
+    )
+
+    assert response.status_code == 200
+
+    payload = response.json()
+
+    assert payload[
+        "model_version"
+    ] == "v1"
+
+
+def test_drift_endpoint():
+    response = client.get(
+        "/drift"
+    )
+
+    assert response.status_code == 200
+
+    payload = response.json()
+
+    assert (
+        payload["model_version"]
+        == "v1"
+    )
+
+    assert payload["sample_count"] >= 0
+    assert payload["drift_score"] >= 0
+    assert payload["window_size"] == 100
+    assert payload["minimum_samples"] == 20
