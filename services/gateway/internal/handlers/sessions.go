@@ -52,9 +52,41 @@ func (h *SessionHandler) Create(w http.ResponseWriter, r *http.Request) {
 	)
 
 	if err != nil {
-		writeJSON(w, http.StatusInternalServerError, map[string]string{
-			"error": "failed to create session",
-		})
+		switch {
+		case errors.Is(
+			err,
+			repository.ErrAgentNotFound,
+		):
+			writeJSON(
+				w,
+				http.StatusNotFound,
+				map[string]string{
+					"error": "agent not found",
+				},
+			)
+
+		case errors.Is(
+			err,
+			repository.ErrAgentNotActive,
+		):
+			writeJSON(
+				w,
+				http.StatusConflict,
+				map[string]string{
+					"error": "agent is not active",
+				},
+			)
+
+		default:
+			writeJSON(
+				w,
+				http.StatusInternalServerError,
+				map[string]string{
+					"error": "failed to create session",
+				},
+			)
+		}
+
 		return
 	}
 

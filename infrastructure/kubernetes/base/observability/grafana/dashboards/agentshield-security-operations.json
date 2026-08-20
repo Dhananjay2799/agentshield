@@ -2650,6 +2650,99 @@
 
                                                          ]
                                        }
+                   },
+                   {
+                       "id":  45,
+                       "type":  "stat",
+                       "title":  "Containment Events",
+                       "gridPos":  {
+                                       "y":  88,
+                                       "w":  6,
+                                       "x":  0,
+                                       "h":  4
+                                   },
+                       "datasource":  {
+                                          "type":  "prometheus",
+                                          "uid":  "prometheus"
+                                      },
+                       "targets":  [
+                                       {
+                                           "refId":  "A",
+                                           "expr":  "agentshield_detection_containment_events_total"
+                                       }
+                                   ],
+                       "options":  {
+                                       "textMode":  "auto",
+                                       "colorMode":  "value",
+                                       "graphMode":  "area",
+                                       "reduceOptions":  {
+                                                             "values":  false,
+                                                             "calcs":  [
+                                                                           "lastNotNull"
+                                                                       ],
+                                                             "fields":  ""
+                                                         },
+                                       "justifyMode":  "auto",
+                                       "orientation":  "auto"
+                                   },
+                       "fieldConfig":  {
+                                           "defaults":  {
+
+                                                        },
+                                           "overrides":  [
+
+                                                         ]
+                                       }
+                   },
+                   {
+                       "id":  46,
+                       "type":  "timeseries",
+                       "title":  "Containment Activity",
+                       "gridPos":  {
+                                       "y":  92,
+                                       "w":  24,
+                                       "x":  0,
+                                       "h":  8
+                                   },
+                       "datasource":  {
+                                          "type":  "prometheus",
+                                          "uid":  "prometheus"
+                                      },
+                       "targets":  [
+                                       {
+                                           "legendFormat":  "Containments / 5m",
+                                           "expr":  "increase(agentshield_detection_containment_events_total[5m])",
+                                           "refId":  "A"
+                                       }
+                                   ],
+                       "options":  {
+                                       "legend":  {
+                                                      "placement":  "bottom",
+                                                      "calcs":  [
+
+                                                                ],
+                                                      "displayMode":  "list"
+                                                  },
+                                       "tooltip":  {
+                                                       "sort":  "none",
+                                                       "mode":  "multi"
+                                                   }
+                                   },
+                       "fieldConfig":  {
+                                           "defaults":  {
+                                                            "custom":  {
+                                                                           "fillOpacity":  0,
+                                                                           "spanNulls":  false,
+                                                                           "showPoints":  "auto",
+                                                                           "drawStyle":  "line",
+                                                                           "lineWidth":  1,
+                                                                           "lineInterpolation":  "linear"
+                                                                       }
+                                                        },
+                                           "overrides":  [
+
+                                                         ]
+                                       }
                    }
                ],
     "refresh":  "10s",

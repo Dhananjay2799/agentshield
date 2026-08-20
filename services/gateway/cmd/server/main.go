@@ -83,6 +83,9 @@ func main() {
 	policyRepository :=
 		repository.NewPolicyRepository(db)
 
+	containmentRepository :=
+		repository.NewContainmentRepository(db)
+
 	// ============================================================
 	// METRICS
 	// ============================================================
@@ -270,6 +273,13 @@ func main() {
 	grantHandler :=
 		handlers.NewGrantHandler(
 			grantRepository,
+		)
+
+	containmentHandler :=
+		handlers.NewContainmentHandler(
+			containmentRepository,
+			auditRepository,
+			eventProducer,
 		)
 
 	// ============================================================
@@ -536,6 +546,20 @@ func main() {
 		),
 	)
 
+	// ------------------------------------------------------------
+	// EMERGENCY AGENT CONTAINMENT
+	//
+	// Admin-only destructive security operation.
+	// Suspends the agent and revokes active sessions and grants.
+	// ------------------------------------------------------------
+
+	mux.HandleFunc(
+		"POST /v1/agents/{id}/contain",
+		limitedAdminOnly(
+			containmentHandler.Contain,
+		),
+	)
+
 	mux.HandleFunc(
 		"POST /v1/actions/evaluate",
 		middleware.SessionRequired(
@@ -684,15 +708,6 @@ func main() {
 			},
 		),
 	)
-
-	// ------------------------------------------------------------
-	// ACTION EVALUATION
-	//
-	// Order:
-	// 1. Validate AgentShield session.
-	// 2. Use validated session as rate-limit identity.
-	// 3. Evaluate action.
-	// ------------------------------------------------------------
 
 	// ------------------------------------------------------------
 	// INCIDENT MANAGEMENT

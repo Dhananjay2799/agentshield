@@ -3,6 +3,7 @@ package repository
 import (
 	"context"
 	"errors"
+	"fmt"
 	"time"
 
 	"github.com/jackc/pgx/v5"
@@ -11,7 +12,10 @@ import (
 	"github.com/dhananjay2799/agentshield/services/gateway/internal/models"
 )
 
-var ErrSessionNotFound = errors.New("session not found")
+var (
+	ErrSessionNotFound = errors.New("session not found")
+	ErrAgentNotActive  = errors.New("agent is not active")
+)
 
 type SessionRepository struct {
 	DB *pgxpool.Pool
@@ -29,6 +33,40 @@ func (r *SessionRepository) Create(
 	req models.CreateSessionRequest,
 ) (*models.AgentSession, error) {
 
+	var agentStatus string
+
+	err := r.DB.QueryRow(
+		ctx,
+		`
+		SELECT status
+		FROM agents
+		WHERE id = $1
+		`,
+		agentID,
+	).Scan(&agentStatus)
+
+	if errors.Is(
+		err,
+		pgx.ErrNoRows,
+	) {
+		return nil, ErrAgentNotFound
+	}
+
+	if err != nil {
+		return nil, fmt.Errorf(
+			"load agent status before session creation: %w",
+			err,
+		)
+	}
+
+	if agentStatus != "active" {
+		return nil, fmt.Errorf(
+			"%w: status=%s",
+			ErrAgentNotActive,
+			agentStatus,
+		)
+	}
+
 	ttl := req.TTLMinutes
 
 	if ttl <= 0 {
@@ -39,7 +77,7 @@ func (r *SessionRepository) Create(
 
 	var session models.AgentSession
 
-	err := r.DB.QueryRow(
+	err = r.DB.QueryRow(
 		ctx,
 		`
 		INSERT INTO agent_sessions (

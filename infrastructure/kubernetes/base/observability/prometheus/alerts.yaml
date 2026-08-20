@@ -10,6 +10,7 @@ groups:
         annotations:
           summary: "High-risk autonomous-agent activity detected"
           description: "AgentShield observed one or more high-risk actions during the last 5 minutes."
+
       - alert: AgentShieldMLBehaviorAnomalyDetected
         expr: increase(agentshield_detection_ml_anomalies_total[5m]) > 0
         for: 30s
@@ -19,6 +20,16 @@ groups:
         annotations:
           summary: "PyTorch agent behavior anomaly detected"
           description: "AgentShield's neural behavioral autoencoder detected autonomous-agent activity outside the learned normal behavior distribution."
+
+      - alert: AgentShieldAgentContainmentExecuted
+        expr: increase(agentshield_detection_containment_events_total[5m]) > 0
+        for: 0m
+        labels:
+          severity: warning
+          service: detection
+        annotations:
+          summary: "AgentShield autonomous agent containment executed"
+          description: "An autonomous agent identity was suspended and its active execution credentials were revoked."
 
       - alert: AgentShieldMLInferenceFailures
         expr: increase(agentshield_detection_ml_failures_total[5m]) > 0

@@ -79,6 +79,22 @@ func NewDetector(
 func (d *Detector) Process(
 	event SecurityEvent,
 ) {
+	if event.EventType == "agent.contained" ||
+		event.Action == "agent.contain" {
+
+		d.Metrics.RecordContainmentEvent()
+
+		log.Printf(
+			"CONTROL PLANE EVENT: agent=%s event_type=%s action=%s decision=%s reason=excluded_from_behavior_learning",
+			event.AgentID,
+			event.EventType,
+			event.Action,
+			event.Decision,
+		)
+
+		return
+	}
+
 	// ---------------------------------------------------------
 	// SINGLE-EVENT DETECTIONS
 	// ---------------------------------------------------------
