@@ -40,41 +40,40 @@ The core principle is:
 
 ```mermaid
 flowchart TD
-    A[Autonomous AI Agent] --> B[AgentShield Gateway]
+    A["Autonomous AI Agent"] --> B["AgentShield Gateway"]
 
-    B --> C[Session Validation]
-    C --> D[Agent Identity]
-    D --> E[Risk Engine]
-    E --> F[OPA / Rego Policy Engine]
+    B --> C["Session Validation"]
+    C --> D["Agent Identity"]
+    D --> E["Risk Engine"]
+    E --> F["OPA and Rego Policy Engine"]
 
-    F -->|ALLOW| G[Authorized Action]
-    F -->|DENY| H[Blocked Action]
-    F -->|REQUIRE APPROVAL| I[Human Approval]
+    F -->|ALLOW| G["Authorized Action"]
+    F -->|DENY| H["Blocked Action"]
+    F -->|REQUIRE_APPROVAL| I["Human Approval"]
 
-    I --> J[Temporary Authorization Grant]
+    I --> J["Temporary Authorization Grant"]
     J --> G
 
-    B --> K[PostgreSQL Audit Trail]
-    B --> L[Redpanda Event Stream]
+    B --> K["PostgreSQL Audit Trail"]
+    B --> L["Redpanda Event Stream"]
 
-    L --> M[Detection Service]
-    M --> N[Behavioral Baselines]
-    M --> O[PyTorch ML Anomaly Service]
+    L --> M["Detection Service"]
+    M --> N["Behavioral Baselines"]
+    M --> O["PyTorch ML Anomaly Service"]
+    M --> P["Security Incidents"]
 
-    M --> P[Security Incidents]
+    P --> Q["Emergency Agent Containment"]
 
-    P --> Q[Emergency Agent Containment]
+    Q --> R["Suspend Agent"]
+    Q --> S["Revoke Sessions"]
+    Q --> T["Revoke Authorization Grants"]
 
-    Q --> R[Suspend Agent]
-    Q --> S[Revoke Sessions]
-    Q --> T[Revoke Authorization Grants]
-
-    M --> U[Prometheus]
+    M --> U["Prometheus"]
     O --> U
     B --> U
 
-    U --> V[Alertmanager]
-    U --> W[Grafana SOC Dashboard]
+    U --> V["Alertmanager"]
+    U --> W["Grafana SOC Dashboard"]
 ```
 
 ---
