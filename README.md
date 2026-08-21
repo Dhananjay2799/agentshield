@@ -316,6 +316,20 @@ AgentShield includes a complete local security-observability stack:
 
 The Grafana security-operations dashboard provides visibility into authorization decisions, incidents, behavioral anomalies, neural anomalies, model drift, and emergency containment activity.
 
+## Demo Evidence
+
+### Security Operations Dashboard
+
+AgentShield includes a SOC-style Grafana dashboard for authorization decisions, incidents, behavioral detections, neural anomaly activity, model drift, containment, and service-health signals.
+
+![AgentShield Security Operations Dashboard](docs/images/grafana-soc-dashboard.png)
+
+### Cloud-Native Runtime
+
+AgentShield runs as a distributed Kubernetes workload with independent authorization, audit, credential, detection, ML, policy, messaging, database, and observability components.
+
+![AgentShield Kubernetes Workloads](docs/images/kubernetes-workloads.png)
+
 ---
 
 ## Zero-Trust Kubernetes Networking
@@ -340,6 +354,12 @@ Alert Receiver
 ```
 
 The Kubernetes workloads also use production-oriented controls including probes, resource requests/limits, non-root execution, capability dropping, seccomp profiles, and read-only filesystems where applicable.
+
+### Emergency Agent Containment
+
+AgentShield can immediately suspend a compromised autonomous agent, revoke its active execution sessions, preserve audit evidence, and reject subsequent requests from the revoked session.
+
+![AgentShield Emergency Containment](docs/images/emergency-containment.png)
 
 ---
 
